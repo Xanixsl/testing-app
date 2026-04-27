@@ -115,12 +115,14 @@ _CACHE_FILE = _os_mod.path.join(
     "instance", "_resolver_cache.json",
 )
 _CACHE_LAST_SAVE = 0.0
+_CACHE_DISK_MTIME = 0.0  # mtime файла на диске на момент последней загрузки
 
 def _cache_load() -> None:
-    global _CACHE
+    global _CACHE, _CACHE_DISK_MTIME
     try:
         if not _os_mod.path.isfile(_CACHE_FILE):
             return
+        st = _os_mod.stat(_CACHE_FILE)
         with open(_CACHE_FILE, "r", encoding="utf-8") as f:
             raw = _json.load(f) or {}
         now = time.time()
@@ -137,15 +139,60 @@ def _cache_load() -> None:
                     loaded += 1
             except Exception:
                 continue
+        _CACHE_DISK_MTIME = st.st_mtime
         _flog(f"CACHE loaded {loaded} entries from disk")
     except Exception as exc:
         _flog(f"CACHE load err: {exc}")
 
+
+def _cache_refresh_if_changed() -> None:
+    """Если файл кэша на диске обновился (например, внешний worker запушил
+    новые URL'ы), подмерживаем свежие записи в in-memory _CACHE.
+    Используется при cache miss перед тем как лезть в yt-dlp.
+    """
+    global _CACHE_DISK_MTIME
+    try:
+        if not _os_mod.path.isfile(_CACHE_FILE):
+            return
+        st = _os_mod.stat(_CACHE_FILE)
+        if st.st_mtime <= _CACHE_DISK_MTIME:
+            return
+        with open(_CACHE_FILE, "r", encoding="utf-8") as f:
+            raw = _json.load(f) or {}
+        now = time.time()
+        merged = 0
+        for k, v in raw.items():
+            try:
+                parts = k.split("\x1f")
+                if len(parts) != 3:
+                    continue
+                key = (parts[0], int(parts[1]), parts[2])
+                ts, url = float(v[0]), str(v[1])
+                if now - ts >= _TTL:
+                    continue
+                cur = _CACHE.get(key)
+                if not cur or cur[0] < ts:
+                    _CACHE[key] = (ts, url)
+                    merged += 1
+            except Exception:
+                continue
+        _CACHE_DISK_MTIME = st.st_mtime
+        if merged:
+            _flog(f"CACHE refreshed {merged} entries from disk")
+    except Exception as exc:
+        _flog(f"CACHE refresh err: {exc}")
+
 def _cache_save(force: bool = False) -> None:
-    global _CACHE_LAST_SAVE
+    global _CACHE_LAST_SAVE, _CACHE_DISK_MTIME
     now = time.time()
     if not force and now - _CACHE_LAST_SAVE < 30:
         return
+    # Перед записью — подмержить чужие свежие записи (другой passenger-воркер
+    # или внешний resolver), чтобы не затереть их своим устаревшим снимком.
+    try:
+        _cache_refresh_if_changed()
+    except Exception:
+        pass
     try:
         _os_mod.makedirs(_os_mod.path.dirname(_CACHE_FILE), exist_ok=True)
         out = {}
@@ -160,6 +207,10 @@ def _cache_save(force: bool = False) -> None:
             _json.dump(out, f, ensure_ascii=False)
         _os_mod.replace(tmp, _CACHE_FILE)
         _CACHE_LAST_SAVE = now
+        try:
+            _CACHE_DISK_MTIME = _os_mod.stat(_CACHE_FILE).st_mtime
+        except Exception:
+            pass
     except Exception as exc:
         _flog(f"CACHE save err: {exc}")
 
@@ -662,6 +713,13 @@ def resolve_stream(query: str, target_duration: int = 0, quality: str = "hi") ->
     now = time.time()
     cached = _CACHE.get(key)
     if cached and now - cached[0] < _TTL:
+        return cached[1]
+    # Возможно внешний worker запушил URL после старта этого процесса —
+    # подгрузим свежие записи с диска и попробуем ещё раз.
+    _cache_refresh_if_changed()
+    cached = _CACHE.get(key)
+    if cached and now - cached[0] < _TTL:
+        _flog(f"PICK CACHE-DISK q={base!r} url=YES")
         return cached[1]
 
     # ---- Piped public API: ВЫКЛЮЧЕНО ---------------------------------
