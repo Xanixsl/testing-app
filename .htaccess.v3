@@ -1,0 +1,28 @@
+# === uWSGI handler (Sprinthost) ===
+# Перенаправляем все запросы на passenger_wsgi.py
+DirectoryIndex passenger_wsgi.py
+
+<Files passenger_wsgi.py>
+    Require all granted
+    SetHandler wsgi-handler
+</Files>
+
+# Все запросы к несуществующим файлам — на WSGI
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ /passenger_wsgi.py/$1 [QSA,L]
+</IfModule>
+
+# === Безопасность ===
+<FilesMatch "(^\.env$|^\.env\..*|\.py[cod]?$|\.sqlite3?$|\.db$|\.log$|^\.gitignore$|^requirements.*\.txt$)">
+    Require all denied
+</FilesMatch>
+RedirectMatch 404 ^/(instance|scripts|venv|__pycache__)(/|$)
+# passenger_wsgi.py — исключение из запрета на .py
+<Files passenger_wsgi.py>
+    Require all granted
+</Files>
+
+SetEnv PYTHONUNBUFFERED 1

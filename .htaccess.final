@@ -1,0 +1,17 @@
+# === uWSGI / Sprinthost (по официальной документации) ===
+DirectoryIndex site.wsgi
+Options +ExecCGI
+AddHandler wsgi-script .wsgi
+
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ /site.wsgi/$1 [QSA,PT,L]
+
+# === Безопасность ===
+<FilesMatch "(^\.env$|^\.env\..*|\.py[cod]?$|\.sqlite3?$|\.db$|\.log$|^\.gitignore$|^requirements.*\.txt$)">
+    Require all denied
+</FilesMatch>
+RedirectMatch 404 ^/(instance|scripts|venv|__pycache__)(/|$)
+
+SetEnv PYTHONUNBUFFERED 1

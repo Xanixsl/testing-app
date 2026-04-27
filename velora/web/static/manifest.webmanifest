@@ -1,0 +1,28 @@
+{
+    "name": "Velora — Музыка",
+    "short_name": "Velora",
+    "description": "Velora Sound — слушайте треки, чарты, мою волну и сохраняйте офлайн.",
+    "start_url": "/?utm_source=pwa",
+    "scope": "/",
+    "display": "standalone",
+    "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+    "orientation": "portrait-primary",
+    "background_color": "#050505",
+    "theme_color": "#050505",
+    "lang": "ru",
+    "dir": "ltr",
+    "categories": ["music", "entertainment"],
+    "icons": [
+        { "src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+        { "src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+        { "src": "/static/icons/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+        { "src": "/static/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+        { "src": "/static/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+    ],
+    "shortcuts": [
+        { "name": "Моя волна", "short_name": "Волна", "url": "/?go=wave", "icons": [{ "src": "/static/icons/icon-192.png", "sizes": "192x192" }] },
+        { "name": "Чарты", "short_name": "Чарты", "url": "/?go=charts", "icons": [{ "src": "/static/icons/icon-192.png", "sizes": "192x192" }] },
+        { "name": "Коллекция", "short_name": "Любимое", "url": "/?go=library", "icons": [{ "src": "/static/icons/icon-192.png", "sizes": "192x192" }] }
+    ],
+    "prefer_related_applications": false
+}

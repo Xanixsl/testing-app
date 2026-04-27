@@ -1,0 +1,40 @@
+# --- Секреты ---
+.env
+.env.local
+.env.*.local
+instance/
+*.db
+*.sqlite
+*.sqlite3
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv/
+build/
+dist/
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- IDE / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- Локальные артефакты Velora ---
+debug-logs/
+*.log
+node_modules/
+
+# --- Локальные деплой-скрипты с захардкоженными SSH-кредами ---
+# (Sprinthost логин/пароль внутри — НИКОГДА не пушить)
+scripts/

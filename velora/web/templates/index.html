@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover, user-scalable=no, interactive-widget=resizes-content">
+    <meta name="theme-color" content="#050505">
+    <meta name="color-scheme" content="dark">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Velora">
+    <meta name="application-name" content="Velora">
+    <meta name="format-detection" content="telephone=no, date=no, address=no, email=no">
+    <meta name="apple-touch-fullscreen" content="yes">
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192.png') }}">
+    <link rel="apple-touch-icon" sizes="512x512" href="{{ url_for('static', filename='icons/icon-512.png') }}">
+    <title>Velora Sound</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto+Flex:opsz,wght,wdth@8..144,400..900,75..151&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_v('style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='redesign.css') }}?v={{ asset_v('redesign.css') }}">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23050505'/><path d='M8 10h2.6l4.4 11 4.4-11H22l-6 14h-2L8 10z' fill='%23ffffff'/><circle cx='25' cy='12' r='1.4' fill='%23ffffff'/></svg>">
+</head>
+<body>
+
+<!-- =========== SVG SPRITE (иконки переиспользуем по <use href="#i-..."/>) =========== -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+        <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+        <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v10a1 1 0 01-1 1h-5v-7h-6v7H4a1 1 0 01-1-1V11z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+        <symbol id="i-wave" viewBox="0 0 24 24"><path d="M3 12c2 0 2-5 4-5s2 10 4 10 2-10 4-10 2 5 4 5 2-3 2-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+        <symbol id="i-fire" viewBox="0 0 24 24"><path d="M12 2c1 4 5 5 5 10a5 5 0 11-10 0c0-2 1-3 2-4-1 2 1 3 2 1 1-2-1-4 1-7z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+        <symbol id="i-library" viewBox="0 0 24 24"><path d="M4 4h4v16H4zM10 4h4v16h-4zM17 5l3 14-3 1-3-14 3-1z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+        <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+        <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.3-1.8l-.1-.1A2 2 0 117 4.6l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 014 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+        <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5l12 7-12 7z" fill="currentColor"/></symbol>
+        <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1" fill="currentColor"/><rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor"/></symbol>
+        <symbol id="i-prev" viewBox="0 0 24 24"><path d="M19 5L9 12l10 7zM7 5h-2v14h2z" fill="currentColor"/></symbol>
+        <symbol id="i-next" viewBox="0 0 24 24"><path d="M5 5l10 7L5 19zM17 5h2v14h-2z" fill="currentColor"/></symbol>
+        <symbol id="i-shuffle" viewBox="0 0 24 24"><path d="M3 6h3l3 4M3 18h3l3-4M14 6h7m0 0l-3-3m3 3l-3 3M14 18h7m0 0l-3-3m3 3l-3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+        <symbol id="i-repeat" viewBox="0 0 24 24"><path d="M4 12V8a3 3 0 013-3h11l-2-2m2 2l-2 2M20 12v4a3 3 0 01-3 3H6l2 2m-2-2l2-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+        <symbol id="i-repeat-one" viewBox="0 0 24 24"><path d="M4 12V8a3 3 0 013-3h11l-2-2m2 2l-2 2M20 12v4a3 3 0 01-3 3H6l2 2m-2-2l2-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><text x="12" y="15.5" text-anchor="middle" font-size="9" font-weight="800" fill="currentColor" font-family="Inter, system-ui, sans-serif">1</text></symbol>
+        <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.5-9C1 9 3 5 6.5 5c2 0 3.5 1 5.5 3 2-2 3.5-3 5.5-3C21 5 23 9 21.5 12 19 16.5 12 21 12 21z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+        <symbol id="i-heart-fill" viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.5-9C1 9 3 5 6.5 5c2 0 3.5 1 5.5 3 2-2 3.5-3 5.5-3C21 5 23 9 21.5 12 19 16.5 12 21 12 21z" fill="currentColor"/></symbol>
+        <symbol id="i-mic" viewBox="0 0 24 24"><rect x="2.5" y="4" width="19" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M6 9h8M6 13h12M6 17h7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+        <symbol id="i-text" viewBox="0 0 24 24"><path d="M5 6h14M5 6v2M19 6v2M12 6v14M9 20h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></symbol>
+        <symbol id="i-share" viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="18" cy="6" r="2.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="18" cy="18" r="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 11l8-4M8 13l8 4" stroke="currentColor" stroke-width="2"/></symbol>
+        <symbol id="i-dislike" viewBox="0 0 24 24"><path d="M15 3H6c-.83 0-1.54.5-1.84 1.22l-3.02 7.05c-.09.23-.14.47-.14.73v2c0 1.1.9 2 2 2h6.31l-.95 4.57-.03.32c0 .41.17.79.44 1.06L9.83 23l6.59-6.59c.36-.36.58-.86.58-1.41V5c0-1.1-.9-2-2-2zm4 0v12h4V3h-4z" fill="currentColor"/></symbol>
+        <symbol id="i-dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2" fill="currentColor"/><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="19" cy="12" r="2" fill="currentColor"/></symbol>
+        <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+        <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+        <symbol id="i-eq" viewBox="0 0 24 24"><path d="M6 4v6m0 4v6M12 4v10m0 4v2M18 4v2m0 4v10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="6" cy="12" r="2" fill="currentColor"/><circle cx="12" cy="16" r="2" fill="currentColor"/><circle cx="18" cy="8" r="2" fill="currentColor"/></symbol>
+        <symbol id="i-vol" viewBox="0 0 24 24"><path d="M3 10v4h4l5 4V6L7 10H3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M16 8a5 5 0 010 8M19 5a9 9 0 010 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+        <symbol id="i-mute" viewBox="0 0 24 24"><path d="M3 10v4h4l5 4V6L7 10H3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M16 9l5 6m0-6l-5 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+        <symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+        <symbol id="i-chev-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+        <symbol id="i-chev-right" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+        <symbol id="i-chev-left" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+        <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+        <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+        <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13a2 2 0 002 2h6a2 2 0 002-2l1-13" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+        <symbol id="i-pin" viewBox="0 0 24 24"><path d="M16 9V4l1.5-1.5A1 1 0 0 0 17 1H7a1 1 0 0 0-.5 1.5L8 4v5l-3 3v2h6v6l1 1 1-1v-6h6v-2l-3-3z" fill="currentColor"/></symbol>
+        <symbol id="i-trailer" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 8l6 4-6 4z" fill="currentColor"/></symbol>
+        <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="10" r="2" fill="currentColor"/><path d="M21 18l-6-6-9 8" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+        <symbol id="i-import" viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 17v2a2 2 0 002 2h10a2 2 0 002-2v-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+        <symbol id="i-kids" viewBox="0 0 24 24"><circle cx="12" cy="9" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 21c0-4 3-7 7-7s7 3 7 7" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+        <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M4 12a8 8 0 0114-5l2-2v6h-6l2-2A6 6 0 006 12M20 12a8 8 0 01-14 5l-2 2v-6h6l-2 2a6 6 0 0010 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+        <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 8v.01M11 12h1v5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+        <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 19h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+        <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5L20 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+        <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+        <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 11V8a4 4 0 018 0v3" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+        <symbol id="i-no-entry" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5.5 18.5L18.5 5.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+    </defs>
+</svg>
+
+<div class="app">
+    <!-- =================== SIDEBAR =================== -->
+    <aside class="sidebar" id="sidebar">
+        <a class="logo" id="logoBtn" title="На главную">
+            <span class="logo-mark">
+                <svg viewBox="0 0 40 40">
+                <rect width="40" height="40" rx="9" fill="#ffffff"/>
+                <path d="M10 12h3.3l5.7 14 5.7-14H28l-7.5 17.5h-2.5L10 12z" fill="#050505"/>
+                <circle cx="31" cy="14" r="1.8" fill="#050505"/>
+                </svg>
+            </span>
+            <span class="logo-text">Velora<span>Музыка</span></span>
+        </a>
+
+        <nav class="nav">
+            <a class="nav-item active" data-view="home"><svg class="ic"><use href="#i-home"/></svg><span>Главная</span></a>
+            <a class="nav-item" data-view="search"><svg class="ic"><use href="#i-search"/></svg><span>Поиск</span></a>
+            <a class="nav-item" data-view="charts"><svg class="ic"><use href="#i-fire"/></svg><span>Чарты</span></a>
+            <a class="nav-item" data-view="library"><svg class="ic"><use href="#i-library"/></svg><span>Коллекция</span></a>
+            <a class="nav-item" data-view="history"><svg class="ic"><use href="#i-clock"/></svg><span>История</span></a>
+        </nav>
+        <!-- (вкладка «Моя волна» намеренно отсутствует — волна доступна на главной) -->
+
+        <div class="sidebar-playlists" id="sidebarPlaylists"></div>
+
+        <div class="sidebar-support">
+            <div class="sup-title">Поддержать проект</div>
+            <div class="sup-logos">
+                <a class="sup-logo" href="https://www.donationalerts.com/r/saylont" target="_blank" rel="noopener" title="DonationAlerts">
+                    <img src="https://www.donationalerts.com/img/header/logo.svg" alt="DonationAlerts" loading="lazy">
+                </a>
+                <a class="sup-logo" href="https://boosty.to/saylontoff/donate" target="_blank" rel="noopener" title="Boosty">
+                    <img src="/static/boosty.png" alt="Boosty" loading="lazy">
+                </a>
+            </div>
+            <div class="sup-note">Сервис без подписок и рекламы</div>
+            <div class="sup-credit">Логотипы принадлежат DonationAlerts и Boosty соответственно</div>
+        </div>
+
+        <div class="user-pill" id="userPill">
+            <div class="user-avatar" id="userAvatar">?</div>
+            <div class="user-meta">
+                <div class="user-name" id="userName">Гость</div>
+                <div class="user-sub">Войдите</div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- =================== MAIN =================== -->
+    <main class="main">
+        <header class="topbar" id="topbar">
+            <button class="back-btn icon-btn" id="backBtn" type="button" aria-label="Назад" title="Назад" hidden><svg class="ic"><use href="#i-back"/></svg></button>
+            <button class="back-btn fwd-btn icon-btn" id="fwdBtn" type="button" aria-label="Вперёд" title="Вперёд" hidden><svg class="ic"><use href="#i-chev-right"/></svg></button>
+            <button class="menu-btn icon-btn" id="menuBtn"><svg class="ic"><use href="#i-list"/></svg></button>
+            <form class="search-wrap" id="searchWrap" role="search" autocomplete="off"
+                  onsubmit="return false" action="javascript:void(0)">
+                <svg class="ic"><use href="#i-search"/></svg>
+                <!-- Хитрая защита от менеджеров паролей: фейковые скрытые поля
+                     "съедают" автозаполнение Chrome/Edge/Safari. -->
+                <input type="text" name="fakeusernameremembered" autocomplete="username"
+                       tabindex="-1" aria-hidden="true"
+                       style="position:absolute;left:-9999px;top:-9999px;opacity:0;pointer-events:none">
+                <input type="password" name="fakepasswordremembered" autocomplete="new-password"
+                       tabindex="-1" aria-hidden="true"
+                       style="position:absolute;left:-9999px;top:-9999px;opacity:0;pointer-events:none">
+                <input id="q" type="search" role="searchbox" name="velora_search"
+                       inputmode="search" enterkeyhint="search"
+                       aria-label="Поиск треков, артистов и альбомов"
+                       placeholder="Артист, трек или альбом"
+                       autocomplete="off" autocorrect="off" autocapitalize="off"
+                       spellcheck="false" data-form-type="other" data-lpignore="true"
+                       data-1p-ignore="true">
+            </form>
+            <div class="sources">
+                <label class="chip"><input type="checkbox" data-src="deezer" checked><span>Deezer</span></label>
+                <label class="chip"><input type="checkbox" data-src="apple" checked><span>Apple</span></label>
+            </div>
+        </header>
+
+        <section class="view" id="view"></section>
+    </main>
+
+    <!-- =================== KARAOKE PANEL (sliding) =================== -->
+    <aside class="karaoke" id="karaoke">
+        <div class="karaoke-head">
+            <h3>Текст песни</h3>
+            <div class="lyrics-lang-bar" id="karaokeLangBar" hidden></div>
+            <button class="icon-btn" id="closeKaraoke"><svg class="ic"><use href="#i-close"/></svg></button>
+        </div>
+        <div class="karaoke-body" id="karaokeBody">
+            <div class="muted">Запустите трек, чтобы увидеть текст.</div>
+        </div>
+    </aside>
+</div>
+
+<!-- =================== PLAYER (мини) =================== -->
+<footer class="player" id="player">
+    <div class="np" id="npBlock">
+        <img id="np-cover" alt="">
+        <div class="np-meta">
+            <div class="np-title-row">
+                <span id="np-title"></span>
+                <span class="explicit-badge" id="np-explicit" hidden title="Explicit">E</span>
+                <span class="preview-badge" id="np-preview-badge" hidden title="Только превью (без мата)">PREVIEW</span>
+            </div>
+            <div id="np-artist" class="muted"></div>
+        </div>
+    </div>
+
+    <div class="player-center">
+        <div class="controls">
+            <button id="likeBtn" class="icon-btn" title="В любимое"><svg class="ic"><use href="#i-heart"/></svg></button>
+            <button id="shuffleBtn" class="icon-btn" title="Перемешать"><svg class="ic"><use href="#i-shuffle"/></svg></button>
+            <button id="prevBtn" class="icon-btn"><svg class="ic"><use href="#i-prev"/></svg></button>
+            <button id="playBtn" class="play-btn"><svg class="ic" id="playIcon"><use href="#i-play"/></svg></button>
+            <button id="nextBtn" class="icon-btn"><svg class="ic"><use href="#i-next"/></svg></button>
+            <button id="repeatBtn" class="icon-btn" title="Повтор"><svg class="ic"><use href="#i-repeat"/></svg></button>
+            <button id="dislikeBtn" class="icon-btn" title="Не нравится"><svg class="ic"><use href="#i-dislike"/></svg></button>
+        </div>
+        <div class="seekbox">
+            <span id="time-cur">0:00</span>
+            <div class="seek-wrap">
+                <div class="seek-buffer" id="seekBuffer"></div>
+                <div class="seek-played" id="seekPlayed"></div>
+                <input id="seek" type="range" min="0" max="1000" value="0">
+            </div>
+            <span id="time-total">0:00</span>
+            <div class="seek-tooltip" id="seekTooltip" hidden></div>
+        </div>
+    </div>
+
+    <div class="player-right">
+        <button id="npAddBtn" class="icon-btn" title="Добавить в плейлист…"><svg class="ic"><use href="#i-plus"/></svg></button>
+        <button id="dlBtn" class="icon-btn" title="Скачать в офлайн"><svg class="ic" id="dlIcon"><use href="#i-download"/></svg></button>
+        <button id="lyricsBtn" class="icon-btn" title="Текст"><svg class="ic"><use href="#i-text"/></svg></button>
+        <button id="queueBtn" class="icon-btn" title="Очередь"><svg class="ic"><use href="#i-list"/></svg></button>
+        <button id="eqBtn" class="icon-btn" title="Эквалайзер"><svg class="ic"><use href="#i-eq"/></svg></button>
+        <div class="vol-wrap" id="volWrap">
+            <button id="volBtn" class="icon-btn" title="Громкость"><svg class="ic" id="volIcon"><use href="#i-vol"/></svg></button>
+            <div class="vol-pop" id="volPop">
+                <div class="vol-pct" id="volPct">70%</div>
+                <input id="vol" class="vol-slider" type="range" min="0" max="100" value="70" orient="vertical">
+            </div>
+        </div>
+        <select id="qualitySel" class="quality-select" title="Качество">
+            <option value="low">Низкое</option>
+            <option value="std" selected>Оптимальное</option>
+            <option value="high">Высокое</option>
+            <option value="max">Максимальное</option>
+        </select>
+        <button id="fullBtn" class="icon-btn" title="На весь экран"><svg class="ic"><use href="#i-expand"/></svg></button>
+    </div>
+    <!-- Мобильное меню «⋯»: дублирует доп.действия (плейлист, скачать). -->
+    <button id="npMoreBtn" class="icon-btn np-more-btn" title="Ещё" aria-haspopup="menu" aria-expanded="false">
+        <svg class="ic"><use href="#i-dots"/></svg>
+    </button>
+    <div id="npMorePop" class="np-more-pop" hidden role="menu">
+        <button class="np-more-item" data-mp="add" role="menuitem">
+            <svg class="ic"><use href="#i-plus"/></svg><span>В плейлист</span>
+        </button>
+        <button class="np-more-item" data-mp="dl" role="menuitem">
+            <svg class="ic"><use href="#i-download"/></svg><span>Скачать</span>
+        </button>
+        <button class="np-more-item" data-mp="lyrics" role="menuitem">
+            <svg class="ic"><use href="#i-text"/></svg><span>Текст</span>
+        </button>
+        <button class="np-more-item" data-mp="queue" role="menuitem">
+            <svg class="ic"><use href="#i-list"/></svg><span>Очередь</span>
+        </button>
+        <button class="np-more-item" data-mp="full" role="menuitem">
+            <svg class="ic"><use href="#i-expand"/></svg><span>На весь экран</span>
+        </button>
+    </div>
+    <audio id="audio" preload="metadata" crossorigin="anonymous" playsinline webkit-playsinline x-webkit-airplay="allow"></audio>
+</footer>
+
+<!-- =================== MOBILE TAB BAR (только для маленьких экранов) =================== -->
+<nav class="mobile-tabbar" id="mobileTabbar" aria-label="Навигация">
+    <button class="mt-item" data-mt="home" aria-label="Главная"><svg class="ic"><use href="#i-home"/></svg><span>Главная</span></button>
+    <button class="mt-item" data-mt="search" aria-label="Поиск"><svg class="ic"><use href="#i-search"/></svg><span>Поиск</span></button>
+    <button class="mt-item" data-mt="library" aria-label="Коллекция"><svg class="ic"><use href="#i-library"/></svg><span>Коллекция</span></button>
+    <button class="mt-item" data-mt="offline" aria-label="Офлайн"><svg class="ic"><use href="#i-download"/></svg><span>Офлайн</span></button>
+    <button class="mt-item" data-mt="settings" aria-label="Настройки"><svg class="ic"><use href="#i-settings"/></svg><span>Настройки</span></button>
+</nav>
+
+<!-- =================== ПОЛНОЭКРАННЫЙ ПЛЕЕР (как Я.Музыка) =================== -->
+<div class="fullplayer" id="fullplayer" hidden>
+    <div class="fp-hot-close" id="fpHotClose" title="Свернуть"></div>
+    <button class="fp-close" id="fullClose"><svg class="ic"><use href="#i-chev-down"/></svg></button>
+
+    <div class="fp-stage" id="fpStage">
+        <div class="fp-card">
+            <img id="fp-cover" alt="">
+            <div class="fp-cover-tools">
+                <button class="fp-tool" id="fpToolQueue" title="Очередь"><svg class="ic"><use href="#i-list"/></svg></button>
+                <button class="fp-tool" id="fpToolLyrics" title="Текст"><svg class="ic"><use href="#i-text"/></svg></button>
+                <button class="fp-tool" id="fpToolDownload" title="Скачать"><svg class="ic" id="fpToolDownloadIcon"><use href="#i-download"/></svg></button>
+                <button class="fp-tool" id="fpToolEq" title="Эквалайзер"><svg class="ic"><use href="#i-eq"/></svg></button>
+                <button class="fp-tool" id="fpToolDislike" title="Не нравится"><svg class="ic"><use href="#i-dislike"/></svg></button>
+            </div>
+            <button class="fp-corner fp-queue-btn" id="fpQueueBtn" hidden><svg class="ic"><use href="#i-list"/></svg></button>
+        </div>
+        <div class="fp-meta">
+            <div class="fp-title">
+                <span id="fp-track-name">—</span>
+                <span class="fp-info-dot"><svg class="ic"><use href="#i-info"/></svg></span>
+            </div>
+            <div class="fp-artist" id="fp-track-artist"></div>
+            <!-- ===== Новый seek-бар (полноэкранный плеер) =====
+                 Структура: один блок .fp-seek содержит дорожку, буфер, заполнение,
+                 кружок-бегунок и нативный input[type=range] поверх (прозрачный).
+                 Время вынесено справа/слева. Весь блок появляется и пропадает
+                 целиком — не остаётся «лишних полосок». -->
+            <div class="fp-seek" id="fpSeek">
+                <span class="fp-seek-time fp-seek-time-cur" id="fp-time-cur">0:00</span>
+                <div class="fp-seek-track">
+                    <div class="fp-seek-buffer" id="fpSeekBuffer"></div>
+                    <div class="fp-seek-played" id="fpSeekPlayed"></div>
+                    <div class="fp-seek-thumb" id="fpSeekThumb"></div>
+                    <input id="fp-seek" class="fp-seek-input" type="range" min="0" max="1000" value="0" aria-label="Перемотка">
+                    <div class="fp-seek-tooltip" id="fpSeekTooltip" hidden>0:00</div>
+                </div>
+                <span class="fp-seek-time fp-seek-time-total" id="fp-time-total">0:00</span>
+            </div>
+        </div>
+        <div class="fp-controls-row">
+            <button class="fp-mini fp-action" id="fpLikeBtn"><svg class="ic" id="fpLikeIcon"><use href="#i-heart"/></svg></button>
+            <button class="fp-mini fp-action" id="fpAddBtn" title="Добавить в плейлист…"><svg class="ic"><use href="#i-plus"/></svg></button>
+            <button class="fp-mini" id="fpShuffleBtn"><svg class="ic"><use href="#i-shuffle"/></svg></button>
+            <button class="fp-mini" id="fpPrevBtn"><svg class="ic"><use href="#i-prev"/></svg></button>
+            <button class="fp-play" id="fpPlayBtn"><svg class="ic" id="fpPlayIcon"><use href="#i-play"/></svg></button>
+            <button class="fp-mini" id="fpNextBtn"><svg class="ic"><use href="#i-next"/></svg></button>
+            <button class="fp-mini" id="fpRepeatBtn"><svg class="ic"><use href="#i-repeat"/></svg></button>
+            <button class="fp-mini fp-action" id="fpLyricsToggle"><svg class="ic"><use href="#i-text"/></svg></button>
+            <div class="fp-vol-wrap" id="fpVolWrap">
+                <button class="fp-mini" id="fpVolBtn" title="Громкость"><svg class="ic"><use href="#i-vol"/></svg></button>
+                <div class="vol-pop" id="fpVolPop">
+                    <div class="vol-pct" id="fpVolPct">70%</div>
+                    <input id="fpVol" class="vol-slider" type="range" min="0" max="100" value="70" orient="vertical">
+                </div>
+            </div>
+            <button class="fp-mini fp-action" id="fpMoreBtn"><svg class="ic"><use href="#i-dots"/></svg></button>
+            <div class="fp-more-menu" id="fpMoreMenu" hidden>
+                <button data-mm="follow"><span>Текст следует за музыкой</span><label class="toggle"><input type="checkbox" id="fpLyricsFollow"><span class="toggle-slider"></span></label></button>
+                <button data-mm="goto-artist"><svg class="ic"><use href="#i-mic"/></svg> К исполнителю</button>
+                <button data-mm="share"><svg class="ic"><use href="#i-share"/></svg> Поделиться</button>
+                <button data-mm="dislike"><svg class="ic"><use href="#i-dislike"/></svg> Не нравится</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="fp-lyrics-wrap">
+        <div class="lyrics-lang-bar fp-lang-bar" id="fpLangBar" hidden></div>
+        <div class="fp-lyrics" id="fpLyrics">
+            <div class="fp-lyrics-empty">
+                <div class="dots"><span></span><span></span><span></span><span></span></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- =================== ПРОФИЛЬ-ПОПОВЕР =================== -->
+<div class="popover" id="profilePop" hidden>
+    <button class="close" id="profileClose"><svg class="ic"><use href="#i-close"/></svg></button>
+    <div class="profile-head">
+        <div class="profile-avatar" id="profileAvatar">?</div>
+        <div class="profile-name" id="profileName"></div>
+        <div class="profile-sub" id="profileSub"></div>
+    </div>
+    <div class="profile-list">
+        <button class="profile-item" data-act="profile"><svg class="ic"><use href="#i-image"/></svg> Мой профиль</button>
+        <button class="profile-item" data-act="settings"><svg class="ic"><use href="#i-settings"/></svg> Настройки</button>
+        <button class="profile-item" data-act="library"><svg class="ic"><use href="#i-library"/></svg> Коллекция</button>
+        <button class="profile-item" data-act="history"><svg class="ic"><use href="#i-clock"/></svg> История</button>
+        <button class="profile-item profile-divider" data-act="logout">Выйти</button>
+    </div>
+</div>
+
+<!-- =================== MODALS =================== -->
+<div class="modal" id="authModal" hidden>
+    <div class="modal-box auth-box">
+        <button class="close" data-close><svg class="ic"><use href="#i-close"/></svg></button>
+
+        <h2 class="auth-title">Вход или регистрация</h2>
+
+        <!-- ШАГ 1: ввод номера -->
+        <div class="auth-step is-active" data-auth-pane="phone">
+            <p class="auth-hint">
+                Введите номер телефона. Если такого аккаунта ещё нет —
+                мы создадим новый, иначе войдём в существующий.
+            </p>
+            <div class="phone-row">
+                <div class="phone-cc-wrap">
+                    <button type="button" class="phone-cc" id="phoneCcBtn" aria-haspopup="listbox" aria-expanded="false">
+                        <span class="phone-flag" id="phoneFlag">🇷🇺</span>
+                        <span id="phoneCcLabel">+7</span>
+                        <span class="phone-cc-caret">▾</span>
+                    </button>
+                    <div class="country-dropdown" id="countryDropdown" hidden>
+                        <input id="countrySearch" type="search" placeholder="Поиск страны или кода…" class="country-search" autocomplete="off">
+                        <div class="country-list" id="countryList" role="listbox"></div>
+                    </div>
+                </div>
+                <input id="phoneInput" type="tel" inputmode="tel" placeholder="999 123-45-67"
+                       autocomplete="tel" class="phone-input">
+            </div>
+            <div class="phone-meta" id="phoneMeta"></div>
+            <div class="modal-actions auth-actions-row">
+                <button id="phoneLoginBtn" class="btn-primary">Войти по коду</button>
+                <button id="phoneRegisterBtn" class="btn-secondary">Зарегистрироваться</button>
+            </div>
+            <div class="auth-hint" style="margin-top:6px;font-size:12px;opacity:.7">
+                <b>Вход</b> — бот пришлёт 6-значный код.&nbsp;
+                <b>Регистрация</b> — бот попросит поделиться контактом.
+            </div>
+            <div id="phoneError" class="auth-error" hidden></div>
+
+            <div class="auth-social-divider"><span>или</span></div>
+            <div class="auth-social-row">
+                <button type="button" class="auth-social-btn" data-provider="google">
+                    <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path fill="#FFC107" d="M43.6 20.5H42V20.4H24v7.2h11.3c-1.5 4.2-5.5 7.2-10.3 7.2-6.1 0-11-4.9-11-11s4.9-11 11-11c2.8 0 5.4 1.1 7.4 2.8l5.1-5.1C34.5 7.6 29.6 5.6 24 5.6 13.8 5.6 5.6 13.8 5.6 24S13.8 42.4 24 42.4c10.6 0 19.6-7.7 19.6-18.4 0-1.2-.1-2.4-.4-3.5z"/>
+                        <path fill="#FF3D00" d="M7.7 14.7l5.9 4.3C15.3 14.9 19.3 12 24 12c2.8 0 5.4 1.1 7.4 2.8l5.1-5.1C34.5 7.6 29.6 5.6 24 5.6 16.7 5.6 10.4 9.7 7.7 14.7z"/>
+                        <path fill="#4CAF50" d="M24 42.4c5.5 0 10.4-2 14.1-5.4l-6.5-5.5c-2 1.4-4.6 2.3-7.6 2.3-4.7 0-8.7-3-10.2-7.2L7.9 31C10.5 36.4 16.8 42.4 24 42.4z"/>
+                        <path fill="#1976D2" d="M43.6 20.5H42V20.4H24v7.2h11.3c-.7 2-2 3.7-3.7 4.9l6.5 5.5c-.5.4 6.9-5 6.9-14 0-1.2-.1-2.4-.4-3.5z"/>
+                    </svg>
+                    <span>Google</span>
+                </button>
+                <button type="button" class="auth-social-btn" data-provider="telegram">
+                    <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8l-1.55 7.32c-.12.52-.42.65-.85.4l-2.35-1.73-1.13 1.09c-.13.13-.24.24-.48.24l.17-2.43 4.42-3.99c.19-.17-.04-.27-.3-.1L9.06 12.7l-2.39-.75c-.52-.16-.53-.52.11-.77l9.34-3.6c.43-.16.81.1.67.77z"/>
+                    </svg>
+                    <span>Telegram</span>
+                </button>
+            </div>
+            <!-- Официальный виджет Telegram Login. Скрипт подгружается
+                 лениво при открытии auth-модалки (см. app.js mountTelegramWidget). -->
+            <div id="tgLoginWidgetWrap" class="tg-widget-wrap" hidden>
+                <div class="auth-social-divider"><span>или быстрый вход</span></div>
+                <div id="tgLoginWidget" class="tg-widget-host"></div>
+            </div>
+        </div>
+
+        <!-- ШАГ 2a: регистрация — ждём share-contact в боте -->
+        <div class="auth-step" data-auth-pane="share" hidden>
+            <p class="auth-hint">
+                Новый аккаунт. Заполните поля и откройте бота — он попросит
+                <b>«Поделиться номером»</b>. После этого вы автоматически войдёте.
+            </p>
+            <div class="reg-fields">
+                <label class="reg-field">
+                    <span>Имя пользователя <small>(@ник)</small></span>
+                    <input id="regUsername" type="text" inputmode="text" autocomplete="username"
+                           maxlength="32" placeholder="например, alex_music" spellcheck="false">
+                    <small id="regUsernameHint" class="reg-hint">3–32 символа: латиница, цифры, _ . -</small>
+                </label>
+                <label class="reg-field">
+                    <span>Отображаемое имя</span>
+                    <input id="regDisplay" type="text" maxlength="60" placeholder="Алексей" autocomplete="name">
+                </label>
+                <label class="reg-field">
+                    <span>Дата рождения</span>
+                    <input id="regDob" type="date" autocomplete="bday">
+                    <small class="reg-hint">Если меньше 18 — детский режим включится автоматически и не отключится до совершеннолетия.</small>
+                </label>
+                <div id="regError" class="auth-error" hidden></div>
+            </div>
+            <a id="shareOpenLink" class="btn-primary tg-open-btn" href="#" target="_blank" rel="noopener">
+                Открыть Telegram
+            </a>
+            <div class="phone-wait">
+                <div class="phone-wait-spinner"></div>
+                <div class="phone-wait-text">Ожидаем подтверждение…</div>
+            </div>
+            <div class="modal-actions">
+                <button id="shareCancelBtn" class="btn-link">Назад</button>
+            </div>
+        </div>
+
+        <!-- ШАГ 2b: вход — бот прислал код, вводим его -->
+        <div class="auth-step" data-auth-pane="code" hidden>
+            <p class="auth-hint">
+                Этот номер уже зарегистрирован. Откройте бота — мы прислали туда
+                код вида <b>123-456</b>. Введите его сюда.
+            </p>
+            <a id="codeOpenLink" class="btn-primary tg-open-btn" href="#" target="_blank" rel="noopener">
+                Открыть Telegram с кодом
+            </a>
+            <input id="loginCodeInput" type="text" inputmode="numeric" maxlength="7"
+                   placeholder="123-456" autocomplete="one-time-code"
+                   class="tg-code-input mono">
+            <div class="modal-actions">
+                <button id="loginCodeSubmitBtn" class="btn-primary">Войти</button>
+                <button id="loginCodeCancelBtn" class="btn-link">Назад</button>
+            </div>
+            <div id="loginCodeError" class="auth-error" hidden></div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== EQ \u041c\u041e\u0414\u0410\u041b\u041a\u0410 \u041e\u0422\u041a\u041b\u042e\u0427\u0415\u041d\u0410 (\u042d\u041a\u0412\u0410\u041b\u0410\u0419\u0417\u0415\u0420 \u0412\u0420\u0415\u041c\u0415\u041d\u041d\u041e \u0412\u042b\u0420\u0415\u0417\u0410\u041d) =====
+     \u0420\u0435\u0430\u043b\u044c\u043d\u044b\u0435 \u043a\u043d\u043e\u043f\u043a\u0438 #eqBtn / #fpToolEq / #srEq \u0432\u044b\u0437\u044b\u0432\u0430\u044e\u0442 openEq() \u0432 app.js,
+     \u043a\u043e\u0442\u043e\u0440\u044b\u0439 \u043f\u043e\u043a\u0430\u0437\u044b\u0432\u0430\u0435\u0442 toast \u00ab\u042d\u043a\u0432\u0430\u043b\u0430\u0439\u0437\u0435\u0440 \u2014 \u0441\u043a\u043e\u0440\u043e\u2026\u00bb. \u041f\u0440\u0438 \u0432\u043e\u0437\u0432\u0440\u0430\u0442\u0435 \u0444\u0443\u043d\u043a\u0446\u0438\u0438
+     \u0440\u0430\u0441\u043a\u043e\u043c\u043c\u0435\u043d\u0442\u0438\u0440\u0443\u0439\u0442\u0435 \u0431\u043b\u043e\u043a \u043d\u0438\u0436\u0435.
+<div class="modal" id="eqModal" hidden>
+    <div class="modal-box eq-box">
+        <button class="close" data-close><svg class="ic"><use href="#i-close"/></svg></button>
+        <h2>\u042d\u043a\u0432\u0430\u043b\u0430\u0439\u0437\u0435\u0440</h2>
+        <div class="eq-toggle-row">
+            <span>\u0412\u043a\u043b\u044e\u0447\u0438\u0442\u044c</span>
+            <label class="toggle">
+                <input type="checkbox" id="eqEnabled">
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+        <div class="eq-bands" id="eqBands"></div>
+        <canvas class="eq-vis" id="eqVis" width="420" height="40"></canvas>
+        <select class="eq-preset-select" id="eqPreset">
+            <option value="flat">\u041f\u043e \u0443\u043c\u043e\u043b\u0447\u0430\u043d\u0438\u044e</option>
+            <option value="bass">Bass Boost</option>
+            <option value="vocal">Vocal</option>
+            <option value="rock">Rock</option>
+            <option value="electronic">Electronic</option>
+            <option value="acoustic">Acoustic</option>
+            <option value="hiphop">Hip-Hop</option>
+        </select>
+    </div>
+</div>
+===== \u041a\u041e\u041d\u0415\u0426 \u0417\u0410\u0413\u041b\u0423\u0428\u041a\u0418 EQ ===== -->
+
+<!-- Универсальная модалка редактирования (плейлист / профиль) -->
+<div class="modal" id="editModal" hidden>
+    <div class="modal-box">
+        <button class="close" data-close><svg class="ic"><use href="#i-close"/></svg></button>
+        <h2 id="editTitle">Редактировать</h2>
+        <div id="editBody"></div>
+        <div class="modal-actions">
+            <button id="editSave" class="btn-primary">Сохранить</button>
+        </div>
+        <div id="editError" class="error" hidden></div>
+    </div>
+</div>
+
+<!-- Очередь (выезжает справа) -->
+<aside class="queue-panel" id="queuePanel">
+    <div class="queue-head">
+        <h3>Очередь воспроизведения</h3>
+        <button class="icon-btn" id="queueClose"><svg class="ic"><use href="#i-close"/></svg></button>
+    </div>
+    <div class="queue-body" id="queueBody"></div>
+</aside>
+
+<!-- Тост -->
+<div class="toast" id="toast" hidden></div>
+
+<!-- ГОСТЬ: лимит 30 секунд -->
+<div class="modal guest-modal" id="guestModal" hidden>
+    <div class="modal-card guest-card">
+        <button class="modal-close" data-close><svg class="ic"><use href="#i-close"/></svg></button>
+        <div class="guest-orb"></div>
+        <h2>Понравилось? Слушайте без ограничений</h2>
+        <p class="guest-sub">Гостям доступны только 30 секунд каждого трека. Создайте аккаунт — это бесплатно, без подписок и рекламы.</p>
+        <div class="guest-features">
+            <div><svg class="ic"><use href="#i-heart-fill"/></svg> Полные треки в высоком качестве</div>
+            <div><svg class="ic"><use href="#i-library"/></svg> Любимое, плейлисты и история</div>
+            <div><svg class="ic"><use href="#i-wave"/></svg> Персональная Моя волна</div>
+            <div><svg class="ic"><use href="#i-eq"/></svg> Эквалайзер и выбор качества</div>
+        </div>
+        <div class="guest-actions">
+            <button class="btn-primary" id="guestRegister">Создать аккаунт</button>
+            <button class="btn-secondary" id="guestLogin">У меня уже есть</button>
+        </div>
+    </div>
+</div>
+
+<input type="file" id="filePicker" hidden accept=".txt,.csv,.md,.docx,.doc,.tsv">
+<input type="file" id="imgPicker" hidden accept="image/png,image/jpeg,image/jpg,image/webp,image/gif">
+
+<!-- 2-шаговая модалка для загрузки аватара / баннера -->
+<div class="modal image-upload-modal" id="imageUploadModal" hidden>
+    <div class="modal-box iu-box">
+        <button class="close" data-iu-close><svg class="ic"><use href="#i-close"/></svg></button>
+        <div class="iu-head">
+            <h2 id="iuTitle">Редактирование изображения</h2>
+            <p id="iuSubtitle" class="muted"></p>
+        </div>
+        <!-- ЭТАП 1: загрузка + рекомендации -->
+        <div id="iuStep1" class="iu-step">
+            <div id="iuDrop" class="iu-drop">
+                <svg class="ic ic-large"><use href="#i-image"/></svg>
+                <div class="iu-drop-title">Перетащите фото сюда</div>
+                <div class="iu-drop-sub">или нажмите, чтобы выбрать файл</div>
+                <input type="file" id="iuFile" accept="image/png,image/jpeg,image/jpg,image/webp,image/gif" hidden>
+            </div>
+            <div id="iuRecs" class="iu-recs"></div>
+        </div>
+        <!-- ЭТАП 2: кроп + предпросмотр -->
+        <div id="iuStep2" class="iu-step" hidden>
+            <div class="iu-crop-row">
+                <div id="iuStage" class="iu-stage">
+                    <div id="iuFrame" class="iu-frame"></div>
+                    <img id="iuCropImg" class="iu-crop-img" alt="" draggable="false">
+                </div>
+                <div class="iu-side">
+                    <div class="iu-preview-title">Предпросмотр</div>
+                    <canvas id="iuPreview" class="iu-preview" width="200" height="200"></canvas>
+                    <div class="iu-zoom">
+                        <button class="icon-btn" id="iuZoomOut" title="Уменьшить">−</button>
+                        <button class="icon-btn" id="iuReset" title="Сбросить"><svg class="ic"><use href="#i-refresh"/></svg></button>
+                        <button class="icon-btn" id="iuZoomIn" title="Увеличить">+</button>
+                    </div>
+                    <div class="iu-hint muted">Перетаскивайте картинку, колёсиком — масштаб.</div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-actions iu-actions">
+            <button class="btn-secondary" data-iu-close>Отмена</button>
+            <button class="btn-primary" id="iuSave" hidden>Сохранить и применить</button>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='app.js') }}?v={{ asset_v('app.js') }}"></script>
+</body>
+</html>

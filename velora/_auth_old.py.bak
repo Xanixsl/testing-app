@@ -1,0 +1,347 @@
+"""Сервис авторизации: коды email + Telegram-верификация телефона.
+
+Логика по ТЗ:
+  EMAIL: 6-значный код, TTL 60 сек, до 3 попыток ввода, дальше бан 15 минут.
+         Повторная отправка кода — только после истечения предыдущего таймера.
+  PHONE: пользователь вводит номер → создаём stp-токен и deeplink
+         https://t.me/<bot>?start=<token>. Бот спрашивает «Поделиться контактом»,
+         получает phone_number, мы помечаем токен verified=True.
+         Те же 3 попытки + 15 мин бан (по номеру и по email параллельно).
+
+SMTP: настраивается через .env (VELORA_SMTP_HOST/USER/PASS/FROM/TLS).
+      Если не настроен — код печатается в stdout (dev-режим).
+TELEGRAM: токен бота через VELORA_TG_BOT_TOKEN или константа в bootstrap.
+          Поллинг крутится в фоновом потоке (long-polling getUpdates).
+"""
+from __future__ import annotations
+
+import json
+import logging
+import os
+import secrets
+import smtplib
+import threading
+import time
+from datetime import datetime, timedelta
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from typing import Optional
+
+import requests
+
+log = logging.getLogger("velora.auth")
+
+CODE_TTL_SEC = 60          # срок действия кода email — 60 секунд
+MAX_ATTEMPTS = 3           # сколько неверных вводов разрешено
+BAN_MINUTES = 15           # на сколько минут блокировать после превышения
+TG_LINK_TTL_SEC = 30 * 60  # окно действия deeplink в Telegram
+
+TG_API = "https://api.telegram.org/bot{token}/{method}"
+
+
+# ====================================================================
+# ОБЩИЕ ХЕЛПЕРЫ ВЕРИФИКАЦИИ
+# ====================================================================
+def gen_code() -> str:
+    """Случайный 6-значный код (с возможным ведущим нулём)."""
+    return f"{secrets.randbelow(1_000_000):06d}"
+
+
+def gen_token(n: int = 18) -> str:
+    """Криптостойкий URL-safe токен для deeplink Telegram."""
+    return secrets.token_urlsafe(n)
+
+
+def is_banned(att) -> bool:
+    return bool(att and att.banned_until and att.banned_until > datetime.utcnow())
+
+
+def ban_seconds_left(att) -> int:
+    if not att or not att.banned_until:
+        return 0
+    delta = (att.banned_until - datetime.utcnow()).total_seconds()
+    return max(0, int(delta))
+
+
+def code_seconds_left(att) -> int:
+    if not att or not att.expires_at:
+        return 0
+    delta = (att.expires_at - datetime.utcnow()).total_seconds()
+    return max(0, int(delta))
+
+
+# ====================================================================
+# EMAIL
+# ====================================================================
+def smtp_configured() -> bool:
+    return bool(os.environ.get("VELORA_SMTP_HOST"))
+
+
+def send_email_code(email: str, code: str) -> bool:
+    """Отправить 6-значный код на email. True если получилось."""
+    host = os.environ.get("VELORA_SMTP_HOST", "").strip()
+    if not host:
+        # Dev-режим: печатаем в консоль чтобы можно было ввести вручную.
+        log.warning("[VELORA AUTH] EMAIL CODE for %s = %s (SMTP not configured)", email, code)
+        print(f"[VELORA AUTH] >>> EMAIL CODE for {email}: {code}")
+        return True
+    port = int(os.environ.get("VELORA_SMTP_PORT", "587") or 587)
+    user = os.environ.get("VELORA_SMTP_USER", "").strip()
+    pwd = os.environ.get("VELORA_SMTP_PASS", "").strip()
+    sender = os.environ.get("VELORA_SMTP_FROM", user or "noreply@velora.local").strip()
+    use_tls = (os.environ.get("VELORA_SMTP_TLS", "1").lower() not in ("0", "false", "no"))
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = f"Velora Sound — код {code}"
+    msg["From"] = sender
+    msg["To"] = email
+    text = (
+        f"Ваш код подтверждения Velora Sound: {code}\n\n"
+        f"Срок действия — 1 минута.\n"
+        f"Если вы не запрашивали код, просто игнорируйте это письмо."
+    )
+    html = (
+        f"<div style='font-family:Inter,sans-serif;background:#050505;color:#eef0ff;"
+        f"padding:32px;border-radius:14px;max-width:480px;margin:auto'>"
+        f"<h2 style='font-weight:800;letter-spacing:-0.02em;margin:0 0 16px'>Velora Sound</h2>"
+        f"<p style='color:#7b7f9e;margin:0 0 24px'>Ваш код подтверждения:</p>"
+        f"<div style='font-family:JetBrains Mono,monospace;font-size:42px;font-weight:600;"
+        f"letter-spacing:0.2em;color:#fff;padding:18px;background:rgba(255,255,255,0.04);"
+        f"border:1px solid rgba(255,255,255,0.08);border-radius:10px;text-align:center'>{code}</div>"
+        f"<p style='color:#7b7f9e;font-size:12px;margin:24px 0 0;text-transform:uppercase;"
+        f"letter-spacing:0.08em;font-family:JetBrains Mono,monospace'>"
+        f"// Действителен 1 минуту</p></div>"
+    )
+    msg.attach(MIMEText(text, "plain", "utf-8"))
+    msg.attach(MIMEText(html, "html", "utf-8"))
+    try:
+        with smtplib.SMTP(host, port, timeout=10) as srv:
+            if use_tls:
+                srv.starttls()
+            if user:
+                srv.login(user, pwd)
+            srv.sendmail(sender, [email], msg.as_string())
+        return True
+    except Exception as exc:  # noqa: BLE001
+        log.error("SMTP send failed: %s", exc)
+        return False
+
+
+# ====================================================================
+# TELEGRAM BOT (long-polling в фоновом потоке)
+# ====================================================================
+class TelegramPoller:
+    """Тонкий бот: реагирует на /start <token> и contact-сообщения.
+
+    На /start <token>:
+      - сохраняет в state ожидание для этого токена
+      - отправляет reply-keyboard «Поделиться контактом»
+    На contact от пользователя:
+      - находит pending-токен этого chat_id, помечает его verified
+      - подтверждает текстом «Готово»
+    """
+
+    def __init__(self, token: str, db_session_factory, model):
+        self.token = token
+        self._stop = threading.Event()
+        self._db_session_factory = db_session_factory  # callable -> Session-like
+        self._VerifyAttempt = model
+        # chat_id -> pending start-token (последний использованный)
+        self._pending: dict[int, str] = {}
+        # username бота (получаем при старте)
+        self.bot_username: str = ""
+
+    # ---- Telegram low-level
+    def _api(self, method: str, **payload) -> dict:
+        url = TG_API.format(token=self.token, method=method)
+        try:
+            r = requests.post(url, json=payload, timeout=20)
+            return r.json()
+        except Exception as exc:  # noqa: BLE001
+            log.error("TG api %s failed: %s", method, exc)
+            return {"ok": False, "error": str(exc)}
+
+    def get_me(self) -> dict:
+        return self._api("getMe")
+
+    def send_message(self, chat_id: int, text: str, **extra) -> dict:
+        return self._api("sendMessage", chat_id=chat_id, text=text, **extra)
+
+    def request_contact(self, chat_id: int) -> dict:
+        kb = {
+            "keyboard": [[{"text": "📱 Поделиться контактом", "request_contact": True}]],
+            "resize_keyboard": True,
+            "one_time_keyboard": True,
+        }
+        return self.send_message(
+            chat_id,
+            "Нажмите кнопку ниже, чтобы поделиться номером телефона "
+            "и завершить вход в Velora Sound.",
+            reply_markup=kb,
+        )
+
+    # ---- Жизненный цикл
+    def start(self) -> None:
+        me = self.get_me()
+        if me.get("ok"):
+            self.bot_username = me["result"].get("username", "")
+            log.info("[VELORA TG] bot @%s ready", self.bot_username)
+        else:
+            log.warning("[VELORA TG] getMe failed: %s", me)
+        t = threading.Thread(target=self._loop, name="velora-tg-poll", daemon=True)
+        t.start()
+
+    def stop(self) -> None:
+        self._stop.set()
+
+    def _loop(self) -> None:
+        offset = 0
+        while not self._stop.is_set():
+            try:
+                r = requests.get(
+                    TG_API.format(token=self.token, method="getUpdates"),
+                    params={"timeout": 25, "offset": offset, "allowed_updates": json.dumps(["message"])},
+                    timeout=35,
+                )
+                data = r.json()
+            except Exception as exc:  # noqa: BLE001
+                log.warning("[VELORA TG] poll error: %s", exc)
+                time.sleep(3)
+                continue
+            if not data.get("ok"):
+                log.warning("[VELORA TG] poll bad response: %s", data)
+                time.sleep(3)
+                continue
+            for upd in data.get("result", []):
+                offset = max(offset, upd["update_id"] + 1)
+                try:
+                    self._handle(upd)
+                except Exception as exc:  # noqa: BLE001
+                    log.exception("[VELORA TG] handler crashed: %s", exc)
+
+    # ---- Обработка
+    def _handle(self, upd: dict) -> None:
+        msg = upd.get("message") or {}
+        chat = msg.get("chat") or {}
+        chat_id = chat.get("id")
+        if not chat_id:
+            return
+        text = (msg.get("text") or "").strip()
+        contact = msg.get("contact")
+
+        # /start [token]
+        if text.startswith("/start"):
+            parts = text.split(maxsplit=1)
+            token = parts[1].strip() if len(parts) > 1 else ""
+            if token:
+                self._pending[chat_id] = token
+                # Помечаем токен как «начатый» (для UX можно не делать)
+                self.request_contact(chat_id)
+            else:
+                self.send_message(
+                    chat_id,
+                    "Привет! Это бот верификации Velora Sound. "
+                    "Чтобы войти, откройте сайт и нажмите «Войти через Telegram».",
+                )
+            return
+
+        # Контакт
+        if contact and contact.get("phone_number"):
+            raw_phone = contact["phone_number"].strip()
+            # У Telegram phone_number обычно без '+', нормализуем
+            if not raw_phone.startswith("+"):
+                raw_phone = "+" + raw_phone.lstrip("0")
+            token = self._pending.pop(chat_id, None)
+            ok = self._verify_token(token, raw_phone) if token else False
+            if ok:
+                self.send_message(
+                    chat_id,
+                    f"Готово! Номер {raw_phone} подтверждён. Возвращайтесь на сайт — там вас ждёт Velora Sound.",
+                    reply_markup={"remove_keyboard": True},
+                )
+            else:
+                self.send_message(
+                    chat_id,
+                    "Не удалось подтвердить. Возможно, ссылка устарела — вернитесь на сайт и начните сначала.",
+                    reply_markup={"remove_keyboard": True},
+                )
+            return
+
+    def _verify_token(self, token: Optional[str], phone: str) -> bool:
+        if not token:
+            return False
+        try:
+            session = self._db_session_factory()
+        except Exception:
+            return False
+        try:
+            att = (
+                session.query(self._VerifyAttempt)
+                .filter_by(kind="tg_link", target=token)
+                .first()
+            )
+            if not att:
+                return False
+            # проверим срок жизни ссылки
+            if att.expires_at and att.expires_at < datetime.utcnow():
+                return False
+            att.phone_normalized = phone
+            att.verified = True
+            att.updated_at = datetime.utcnow()
+            session.commit()
+            return True
+        except Exception as exc:  # noqa: BLE001
+            log.error("verify_token db error: %s", exc)
+            try:
+                session.rollback()
+            except Exception:
+                pass
+            return False
+        finally:
+            try:
+                session.remove()  # type: ignore[attr-defined]
+            except Exception:
+                pass
+
+
+# ====================================================================
+# СТРАНЫ С ФЛАГАМИ — ходовые
+# ====================================================================
+def _flag(cc: str) -> str:
+    """Превращает ISO-код страны в emoji-флаг."""
+    return "".join(chr(0x1F1E6 + ord(c) - ord("A")) for c in cc.upper())
+
+
+# (iso, code, name_ru). Список «толстый» — большинство стран мира.
+_COUNTRY_LIST = [
+    ("RU", "7", "Россия"), ("KZ", "7", "Казахстан"), ("BY", "375", "Беларусь"),
+    ("UA", "380", "Украина"), ("UZ", "998", "Узбекистан"), ("KG", "996", "Киргизия"),
+    ("TJ", "992", "Таджикистан"), ("TM", "993", "Туркменистан"), ("AZ", "994", "Азербайджан"),
+    ("AM", "374", "Армения"), ("GE", "995", "Грузия"), ("MD", "373", "Молдова"),
+    ("US", "1", "США"), ("CA", "1", "Канада"),
+    ("GB", "44", "Великобритания"), ("DE", "49", "Германия"), ("FR", "33", "Франция"),
+    ("IT", "39", "Италия"), ("ES", "34", "Испания"), ("PL", "48", "Польша"),
+    ("CZ", "420", "Чехия"), ("NL", "31", "Нидерланды"), ("BE", "32", "Бельгия"),
+    ("PT", "351", "Португалия"), ("CH", "41", "Швейцария"), ("AT", "43", "Австрия"),
+    ("SE", "46", "Швеция"), ("NO", "47", "Норвегия"), ("FI", "358", "Финляндия"),
+    ("DK", "45", "Дания"), ("IE", "353", "Ирландия"), ("GR", "30", "Греция"),
+    ("LT", "370", "Литва"), ("LV", "371", "Латвия"), ("EE", "372", "Эстония"),
+    ("RO", "40", "Румыния"), ("BG", "359", "Болгария"), ("HU", "36", "Венгрия"),
+    ("RS", "381", "Сербия"), ("HR", "385", "Хорватия"), ("TR", "90", "Турция"),
+    ("IL", "972", "Израиль"), ("AE", "971", "ОАЭ"), ("SA", "966", "Саудовская Аравия"),
+    ("CN", "86", "Китай"), ("JP", "81", "Япония"), ("KR", "82", "Южная Корея"),
+    ("IN", "91", "Индия"), ("ID", "62", "Индонезия"), ("TH", "66", "Таиланд"),
+    ("VN", "84", "Вьетнам"), ("MY", "60", "Малайзия"), ("SG", "65", "Сингапур"),
+    ("PH", "63", "Филиппины"), ("AU", "61", "Австралия"), ("NZ", "64", "Новая Зеландия"),
+    ("BR", "55", "Бразилия"), ("MX", "52", "Мексика"), ("AR", "54", "Аргентина"),
+    ("CL", "56", "Чили"), ("CO", "57", "Колумбия"), ("PE", "51", "Перу"),
+    ("ZA", "27", "ЮАР"), ("EG", "20", "Египет"), ("NG", "234", "Нигерия"),
+    ("KE", "254", "Кения"), ("MA", "212", "Марокко"),
+]
+
+
+def list_countries() -> list[dict]:
+    return [
+        {"iso": iso, "code": code, "flag": _flag(iso), "name": name}
+        for (iso, code, name) in _COUNTRY_LIST
+    ]

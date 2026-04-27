@@ -1,0 +1,38 @@
+# Sprinthost / Passenger — Velora Sound
+PassengerEnabled On
+PassengerAppRoot <APP_ROOT>
+PassengerPython <APP_ROOT>/venv/bin/python
+PassengerAppType wsgi
+PassengerStartupFile passenger_wsgi.py
+
+SetEnv PYTHONUNBUFFERED 1
+
+# принудительный HTTPS (если домен подключён к SSL)
+RewriteEngine On
+RewriteCond %{HTTPS} !=on
+RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
+
+# отдавать статику напрямую через Apache
+<IfModule mod_passenger.c>
+    PassengerHighPerformance on
+</IfModule>
+
+# === Безопасность ===
+# Запрет доступа к секретам и служебным файлам
+<FilesMatch "(^\.env$|^\.env\..*|\.py[cod]?$|\.sqlite3?$|\.db$|\.log$|^\.gitignore$|^requirements\.txt$)">
+    Require all denied
+</FilesMatch>
+
+# Запрет на содержимое приватных директорий
+RedirectMatch 404 ^/(instance|scripts|venv|__pycache__)(/|$)
+
+# passenger_wsgi.py — обязательно доступен Passenger-у
+<Files passenger_wsgi.py>
+    Require all granted
+</Files>
+
+# === Кэш статики ===
+<FilesMatch "\.(js|css|png|jpg|jpeg|gif|webp|svg|woff2?|ico)$">
+    Header set Cache-Control "public, max-age=2592000"
+</FilesMatch>
+

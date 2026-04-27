@@ -1,0 +1,17 @@
+﻿customtkinter>=5.2.2
+Pillow>=10.3.0
+requests>=2.32.0
+python-vlc>=3.0.20123
+yt-dlp>=2025.1.0
+# curl_cffi — TLS-impersonate для yt-dlp, обязателен на shared-хостинге.
+curl_cffi>=0.7.0
+Flask>=3.0.0
+Flask-Login>=0.6.3
+Flask-SQLAlchemy>=3.1
+SQLAlchemy>=2.0
+PyMySQL>=1.1
+cryptography>=42
+python-dotenv>=1.0
+phonenumbers>=9.0
+# NSFW-модерация постов на стене (опционально, fallback — PIL-эвристика).
+nudenet>=3.4

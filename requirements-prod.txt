@@ -1,0 +1,15 @@
+requests>=2.32.0
+yt-dlp>=2025.1.0
+# curl_cffi даёт yt-dlp impersonate=chrome — без него YouTube/SoundCloud
+# на shared-хостинге кладут TLS-handshake (SSL EOF), резолвер возвращает
+# None, и сервер на КАЖДОМ треке отдаёт 30-сек Deezer preview.
+curl_cffi>=0.7.0
+Pillow>=10.3.0
+Flask>=3.0.0
+Flask-Login>=0.6.3
+Flask-SQLAlchemy>=3.1
+SQLAlchemy>=2.0
+PyMySQL>=1.1
+cryptography>=42
+python-dotenv>=1.0
+phonenumbers>=9.0

@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Velora Sound — добро пожаловать</title>
+<meta name="theme-color" content="#0a0a12">
+<link rel="icon" href="{{ url_for('static', filename='icons/icon-192.png') }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #07070b; color: #f1f1f5; font-family: 'Inter', system-ui, -apple-system, sans-serif; line-height: 1.55; }
+  ::selection { background: #7c5cff; color: #fff; }
+
+  /* ---------- Фон с градиентами и шумом ---------- */
+  .bg-deco { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+  .bg-deco::before, .bg-deco::after {
+    content: ""; position: absolute; border-radius: 50%; filter: blur(120px); opacity: .55;
+  }
+  .bg-deco::before { width: 720px; height: 720px; left: -200px; top: -200px;
+    background: radial-gradient(circle, #7c5cff 0%, transparent 70%); animation: float1 18s ease-in-out infinite; }
+  .bg-deco::after { width: 600px; height: 600px; right: -150px; bottom: -200px;
+    background: radial-gradient(circle, #ff5cb1 0%, transparent 70%); animation: float2 22s ease-in-out infinite; }
+  @keyframes float1 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(80px,60px)} }
+  @keyframes float2 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-80px,-50px)} }
+
+  main { position: relative; z-index: 1; max-width: 1080px; margin: 0 auto; padding: 80px 24px 120px; }
+
+  /* ---------- Header ---------- */
+  .nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 80px; }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 20px; letter-spacing: -.02em; }
+  .logo-mark {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: linear-gradient(135deg, #7c5cff, #ff5cb1);
+    display: grid; place-items: center; font-size: 18px;
+    box-shadow: 0 8px 24px rgba(124, 92, 255, .4);
+  }
+  .nav-tag { font-size: 12px; opacity: .55; padding: 6px 12px; border: 1px solid rgba(255,255,255,.1);
+    border-radius: 999px; }
+
+  /* ---------- Hero ---------- */
+  .hero { text-align: center; margin-bottom: 120px; }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 16px; border-radius: 999px;
+    background: rgba(255, 92, 177, .12); border: 1px solid rgba(255, 92, 177, .35);
+    color: #ffb6d9; font-size: 13px; font-weight: 500; margin-bottom: 24px;
+  }
+  .hero-badge::before {
+    content: ""; width: 6px; height: 6px; border-radius: 50%;
+    background: #ff5cb1; box-shadow: 0 0 8px #ff5cb1;
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  h1 { font-size: clamp(44px, 7vw, 78px); font-weight: 800; letter-spacing: -.04em;
+    line-height: 1.05; margin-bottom: 28px; }
+  h1 .grad {
+    background: linear-gradient(90deg, #7c5cff, #ff5cb1, #ffb86c);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .hero p { font-size: clamp(17px, 1.6vw, 20px); opacity: .75; max-width: 620px; margin: 0 auto 36px; }
+  .hero-actions { display: inline-flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 16px 28px; border-radius: 14px; font-weight: 600; font-size: 16px;
+    text-decoration: none; cursor: pointer; border: none;
+    transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, #7c5cff, #ff5cb1); color: #fff;
+    box-shadow: 0 14px 40px rgba(124, 92, 255, .45);
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 18px 50px rgba(124, 92, 255, .55); }
+  .btn-ghost {
+    background: rgba(255,255,255,.06); color: #f1f1f5; border: 1px solid rgba(255,255,255,.12);
+  }
+  .btn-ghost:hover { background: rgba(255,255,255,.12); }
+
+  /* ---------- Секции ---------- */
+  .section { margin-bottom: 100px; }
+  .section-eyebrow { font-size: 13px; font-weight: 600; letter-spacing: .12em;
+    text-transform: uppercase; color: #ff5cb1; margin-bottom: 12px; }
+  .section h2 { font-size: clamp(32px, 4.5vw, 48px); font-weight: 700;
+    letter-spacing: -.03em; line-height: 1.1; margin-bottom: 20px; }
+  .section .lead { font-size: 18px; opacity: .7; max-width: 720px; margin-bottom: 48px; }
+
+  /* ---------- Фишки (карточки) ---------- */
+  .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+  .feature {
+    padding: 28px; border-radius: 18px;
+    background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.015));
+    border: 1px solid rgba(255,255,255,.07);
+    transition: transform .2s ease, border-color .2s ease;
+  }
+  .feature:hover { transform: translateY(-4px); border-color: rgba(124, 92, 255, .35); }
+  .feature-icon {
+    width: 48px; height: 48px; border-radius: 12px; display: grid; place-items: center;
+    margin-bottom: 18px; font-size: 22px;
+    background: linear-gradient(135deg, rgba(124, 92, 255, .25), rgba(255, 92, 177, .25));
+  }
+  .feature h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+  .feature p { font-size: 14px; opacity: .65; line-height: 1.6; }
+
+  /* ---------- Сравнительная табличка-стёб ---------- */
+  .compare { border-radius: 18px; overflow: hidden;
+    border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.02); }
+  .compare-row { display: grid; grid-template-columns: 1.5fr 1fr 1fr; align-items: center;
+    padding: 20px 24px; border-bottom: 1px solid rgba(255,255,255,.06); font-size: 15px; }
+  .compare-row:last-child { border-bottom: none; }
+  .compare-row.head { font-weight: 700; opacity: .9; background: rgba(255,255,255,.02);
+    text-transform: uppercase; letter-spacing: .08em; font-size: 12px; }
+  .compare-row .col-they { opacity: .55; }
+  .compare-row .col-us { color: #ff5cb1; font-weight: 600; }
+  .compare-row .col-us::before { content: "✓ "; }
+  .compare-row .col-they::before { content: "✗ "; }
+
+  /* ---------- Стат-цифры ---------- */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
+  .stat {
+    text-align: center; padding: 32px 20px; border-radius: 18px;
+    background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
+    border: 1px solid rgba(255,255,255,.07);
+  }
+  .stat-num { font-size: 44px; font-weight: 800; letter-spacing: -.03em;
+    background: linear-gradient(135deg, #7c5cff, #ff5cb1);
+    -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .stat-label { font-size: 13px; opacity: .6; margin-top: 8px; text-transform: uppercase; letter-spacing: .1em; }
+
+  /* ---------- FAQ ---------- */
+  .faq-item { padding: 22px 26px; border-radius: 14px;
+    background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.06);
+    margin-bottom: 12px; }
+  .faq-item summary { font-weight: 600; font-size: 16px; cursor: pointer; list-style: none; }
+  .faq-item summary::-webkit-details-marker { display: none; }
+  .faq-item summary::after { content: "+"; float: right; font-weight: 400; opacity: .5; transition: transform .2s; }
+  .faq-item[open] summary::after { transform: rotate(45deg); }
+  .faq-item p { margin-top: 14px; opacity: .7; font-size: 15px; }
+
+  /* ---------- Финальный CTA ---------- */
+  .cta-final { text-align: center; padding: 80px 32px; border-radius: 24px;
+    background: linear-gradient(135deg, rgba(124, 92, 255, .15), rgba(255, 92, 177, .15));
+    border: 1px solid rgba(124, 92, 255, .25); }
+  .cta-final h2 { font-size: clamp(36px, 5vw, 56px); font-weight: 800;
+    letter-spacing: -.03em; line-height: 1.05; margin-bottom: 20px; }
+  .cta-final p { font-size: 18px; opacity: .75; max-width: 560px; margin: 0 auto 32px; }
+  .cta-actions { display: inline-flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+
+  /* ---------- Футер ---------- */
+  footer { text-align: center; padding-top: 48px; opacity: .4; font-size: 13px; }
+  footer a { color: inherit; }
+
+  /* ---------- Бейдж «уже видели вас» ---------- */
+  .seen-badge {
+    position: fixed; top: 20px; right: 80px; z-index: 10;
+    padding: 10px 16px; border-radius: 999px;
+    background: rgba(124, 92, 255, .18); border: 1px solid rgba(124, 92, 255, .4);
+    color: #d8ccff; font-size: 13px; font-weight: 500;
+    backdrop-filter: blur(10px); display: none; animation: slideIn .4s ease;
+  }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ---------- Кнопка-крестик закрытия welcome-страницы ---------- */
+  .close-x {
+    position: fixed; top: 18px; right: 18px; z-index: 20;
+    width: 44px; height: 44px; border-radius: 50%;
+    display: grid; place-items: center; cursor: pointer;
+    background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12);
+    color: #f1f1f5; backdrop-filter: blur(10px);
+    transition: background .15s ease, transform .15s ease, border-color .15s ease;
+    text-decoration: none;
+  }
+  .close-x:hover {
+    background: rgba(255, 92, 177, .18);
+    border-color: rgba(255, 92, 177, .45);
+    transform: rotate(90deg);
+  }
+  .close-x svg { width: 18px; height: 18px; }
+  .close-hint {
+    position: fixed; top: 70px; right: 18px; z-index: 19;
+    font-size: 11px; opacity: .55; text-align: right;
+    pointer-events: none;
+    animation: fadeOut .5s ease 4s forwards;
+  }
+  @keyframes fadeOut { to { opacity: 0; visibility: hidden; } }
+
+  /* ---------- Rofl-блок (цитаты/мемы) ---------- */
+  .rofls { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+  .rofl {
+    padding: 24px 26px; border-radius: 16px; position: relative;
+    background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
+    border: 1px solid rgba(255,255,255,.07);
+    transition: transform .2s ease, border-color .2s ease;
+  }
+  .rofl:hover { transform: translateY(-3px) rotate(-.4deg); border-color: rgba(255,92,177,.35); }
+  .rofl::before {
+    content: "\201C"; position: absolute; top: -8px; left: 14px;
+    font-size: 60px; line-height: 1; color: rgba(255,92,177,.35);
+    font-family: Georgia, serif; pointer-events: none;
+  }
+  .rofl-text { font-size: 15px; line-height: 1.55; opacity: .85; margin-bottom: 14px; padding-top: 6px; }
+  .rofl-author { font-size: 12px; opacity: .55; font-weight: 600; letter-spacing: .04em; }
+  .rofl-author::before { content: "— "; }
+  .legal-sticker {
+    margin-top: 24px; padding: 14px 18px; border-radius: 12px;
+    background: rgba(255,184,108,.08); border: 1px dashed rgba(255,184,108,.35);
+    font-size: 13px; opacity: .8; text-align: center; line-height: 1.55;
+  }
+  .legal-sticker b { color: #ffb86c; }
+
+  /* ---------- Кнопка-крестик закрытия ---------- */
+  .close-x {
+    position: fixed; top: 18px; right: 18px; z-index: 20;
+    width: 44px; height: 44px; border-radius: 50%;
+    display: grid; place-items: center; cursor: pointer;
+    background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12);
+    color: #f1f1f5; backdrop-filter: blur(10px);
+    transition: background .15s ease, transform .15s ease, border-color .15s ease;
+    text-decoration: none;
+  }
+  .close-x:hover {
+    background: rgba(255, 92, 177, .18);
+    border-color: rgba(255, 92, 177, .45);
+    transform: rotate(90deg);
+  }
+  .close-x svg { width: 18px; height: 18px; }
+  .close-hint {
+    position: fixed; top: 70px; right: 18px; z-index: 19;
+    font-size: 11px; opacity: .55; text-align: right;
+    pointer-events: none;
+    animation: fadeOut .5s ease 4s forwards;
+  }
+  @keyframes fadeOut { to { opacity: 0; visibility: hidden; } }
+
+  @media (max-width: 640px) {
+    main { padding: 40px 18px 80px; }
+    .nav { margin-bottom: 48px; }
+    .compare-row { grid-template-columns: 1.4fr 1fr 1fr; padding: 14px 14px; font-size: 13px; }
+    .cta-final { padding: 48px 20px; }
+    .seen-badge { right: 70px; top: 14px; padding: 6px 10px; font-size: 11px; }
+    .close-x { top: 12px; right: 12px; width: 38px; height: 38px; }
+  }
+</style>
+</head>
+<body>
+<div class="bg-deco"></div>
+<div class="seen-badge" id="seenBadge">Мы вас уже видели — но ладно, ещё раз 😉</div>
+<a href="/" class="close-x" id="closeX" title="Закрыть и сразу в плеер (Esc)" aria-label="Закрыть">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+    <path d="M6 6 L18 18 M18 6 L6 18"/>
+  </svg>
+</a>
+<div class="close-hint">или нажми Esc</div>
+
+<main>
+  <nav class="nav">
+    <div class="logo">
+      <div class="logo-mark">♪</div>
+      <span>Velora Sound</span>
+    </div>
+    <span class="nav-tag">beta · invite-only</span>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-badge">Без цензуры. Без мата на бипах. Без купюр.</div>
+    <h1>Устал от <span class="grad">тишины</span><br>там, где должны быть слова?</h1>
+    <p>Каждый второй трек на «больших» сервисах теперь — версия «для лифта». Velora возвращает оригиналы, ремиксы, мэшапы и всё то, что испугалось правил рекомендательных систем.</p>
+    <div class="hero-actions">
+      <a href="#cta" class="btn btn-primary">Слушать без цензуры →</a>
+      <a href="#features" class="btn btn-ghost">Что внутри</a>
+    </div>
+  </section>
+
+  <!-- Фишки -->
+  <section class="section" id="features">
+    <div class="section-eyebrow">// Что мы сделали</div>
+    <h2>Музыка, которой не нужно разрешение</h2>
+    <p class="lead">Мы не спрашиваем правообладателей, какую версию трека вам можно. Мы спрашиваем вас.</p>
+
+    <div class="features">
+      <div class="feature">
+        <div class="feature-icon">🎧</div>
+        <h3>Оригинальные треки</h3>
+        <p>Без бипов, без вырезанных куплетов, без «чистых версий для радио». Так, как задумывал артист.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🌐</div>
+        <h3>Источники со всего мира</h3>
+        <p>Deezer, iTunes, открытые базы — собираем в одном месте, чтобы ты не лазал по 5 приложениям.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🚀</div>
+        <h3>Без рекламы и подписки</h3>
+        <p>Не предлагаем тебе «чёрную пятницу» каждые 30 секунд. Не делаем pause-screen с акциями.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">📱</div>
+        <h3>PWA — ставится на телефон</h3>
+        <p>Открыл в Chrome → «Добавить на главный экран» → у тебя приложение. Без App Store и Google Play.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🤫</div>
+        <h3>Анонимный вход</h3>
+        <p>Только Telegram или номер. Никаких email-рассылок, sms-промо и «давайте мы вам позвоним».</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">📝</div>
+        <h3>Тексты с переводом</h3>
+        <p>Читаешь оригинал и перевод одновременно. Узнаёшь, что там вообще пел Drake.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">😈</div>
+        <h3>Анти-цензорный режим</h3>
+        <p>Алгоритм нюхает «Clean Edit» за километр и подменяет на оригинал. Серёга Пират → Сява, вот это всё.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">⚡</div>
+        <h3>Быстрее, чем твой Wi-Fi</h3>
+        <p>Лирика грузится за ~3 секунды параллельно по 5 источникам. Старый плеер ещё думает — мы уже поём.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Rofls -->
+  <section class="section">
+    <div class="section-eyebrow">// Цитаты «реальных» пользователей</div>
+    <h2>Что говорят в интернетах</h2>
+    <p class="lead">Все совпадения с реальными людьми случайны. Или нет. Не знаем.</p>
+    <div class="rofls">
+      <div class="rofl">
+        <div class="rofl-text">Наконец-то услышал строчку, из-за которой я полюбил этот трек 7 лет назад. На всех сервисах был бип.</div>
+        <div class="rofl-author">Никита, «это была бл*дь»</div>
+      </div>
+      <div class="rofl">
+        <div class="rofl-text">Открыл Velora в метро — рука сама отписалась от Spotify, потому что больше не нужна.</div>
+        <div class="rofl-author">Мария, Москва</div>
+      </div>
+      <div class="rofl">
+        <div class="rofl-text">Я не понимаю слова в рэпе — но теперь хотя бы вижу их все.</div>
+        <div class="rofl-author">бабушка одного рэпера</div>
+      </div>
+      <div class="rofl">
+        <div class="rofl-text">Писал в поддержку: «у вас в треке мат». Ответили: «да, пожалуйста».</div>
+        <div class="rofl-author">наша служба поддержки</div>
+      </div>
+      <div class="rofl">
+        <div class="rofl-text">Думал «в этой траве» — это мем. Оказалось — Сява. И там никаких бипов.</div>
+        <div class="rofl-author">Дима, СПб</div>
+      </div>
+      <div class="rofl">
+        <div class="rofl-text">Ни одного попапа «продли подписку» за месяц. Рекорд для 2026 года.</div>
+        <div class="rofl-author">я, лично</div>
+      </div>
+      <div class="rofl">
+        <div class="rofl-text">Сначала подумал «фу, ещё один клон Я.Музыки». Через 5 минут уже искал, как закинуть разрабам на пиво.</div>
+        <div class="rofl-author">аноним с двача</div>
+      </div>
+      <div class="rofl">
+        <div class="rofl-text">Жена услышала, что я слушаю. Сказала: «о, опять твой пират». Я: «нет, это Сява теперь».</div>
+        <div class="rofl-author">женатый меломан</div>
+      </div>
+    </div>
+    <div class="legal-sticker">
+      ✍️ <b>Юридическая мелочь:</b> отзывы выше — художественный вымысел.
+      Но «это была бл*дь» — реальная реакция разработчика, когда он впервые услышал оригинальный куплет в Velora.
+    </div>
+  </section>
+
+  <!-- Сравнение -->
+  <section class="section">
+    <div class="section-eyebrow">// Сравним?</div>
+    <h2>Velora vs «удобные» сервисы</h2>
+    <p class="lead">Без обид, но кто-то должен это сказать.</p>
+
+    <div class="compare">
+      <div class="compare-row head">
+        <div></div>
+        <div>«Большие» сервисы</div>
+        <div>Velora</div>
+      </div>
+      <div class="compare-row">
+        <div>Оригинальные тексты треков</div>
+        <div class="col-they">Часто «чистая» версия</div>
+        <div class="col-us">Без купюр</div>
+      </div>
+      <div class="compare-row">
+        <div>Реклама между треками</div>
+        <div class="col-they">15 секунд каждые 3 трека</div>
+        <div class="col-us">Никогда</div>
+      </div>
+      <div class="compare-row">
+        <div>Просит email и пароль</div>
+        <div class="col-they">Обязательно</div>
+        <div class="col-us">Только Telegram/телефон</div>
+      </div>
+      <div class="compare-row">
+        <div>Региональные ограничения</div>
+        <div class="col-they">«Этот трек недоступен в вашей стране»</div>
+        <div class="col-us">Доступно везде</div>
+      </div>
+      <div class="compare-row">
+        <div>Подписка от 199₽/мес</div>
+        <div class="col-they">Иначе только 30-сек превью</div>
+        <div class="col-us">Бесплатно полностью</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Стата -->
+  <section class="section">
+    <div class="section-eyebrow">// Цифры (которые мы не выдумали)</div>
+    <h2>Velora в числах</h2>
+    <p class="lead">Ну ладно, парочку выдумали для красоты. Угадай какие.</p>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-num">∞</div>
+        <div class="stat-label">Треков</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">0₽</div>
+        <div class="stat-label">Подписка</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">0</div>
+        <div class="stat-label">Рекламных пауз</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">100%</div>
+        <div class="stat-label">Свободы выбора</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="section">
+    <div class="section-eyebrow">// Важные вопросы</div>
+    <h2>Что обычно спрашивают</h2>
+    <p class="lead">Если что-то осталось — пиши в Telegram-бот.</p>
+
+    <details class="faq-item">
+      <summary>Это вообще легально?</summary>
+      <p>Velora — агрегатор открытых каталогов (Deezer / iTunes). Мы ничего не храним и не раздаём — даём ссылки и интерфейс. Юридически это RSS-читалка, только для музыки.</p>
+    </details>
+    <details class="faq-item">
+      <summary>Откуда берутся тексты?</summary>
+      <p>Из открытых лирик-сервисов и базы пользователей. Если видишь, что текст не совпадает — кнопка «предложить правку» в плеере.</p>
+    </details>
+    <details class="faq-item">
+      <summary>Почему я должен входить через Telegram?</summary>
+      <p>Чтобы тебе не пришлось придумывать пароль, потом восстанавливать его через email, потом получать на этот email спам про инвестиции. Telegram = один тап.</p>
+    </details>
+    <details class="faq-item">
+      <summary>А приложение для iOS/Android будет?</summary>
+      <p>Уже есть — это PWA. Открой в Safari/Chrome → «Поделиться» → «На экран Домой». Velora появится как обычное приложение, без сторов и без модерации.</p>
+    </details>
+    <details class="faq-item">
+      <summary>Что вы знаете обо мне?</summary>
+      <p>Технически — слепок твоего браузера и устройства (нужен, чтобы welcome-страница не выскакивала каждый раз). Хранится <b>хешем</b>, обратно не восстанавливается. Никаких кук рекламных сетей.</p>
+    </details>
+  </section>
+
+  <!-- Финальный CTA -->
+  <section class="cta-final" id="cta">
+    <h2>Готов услышать <span class="grad" style="background:linear-gradient(135deg,#7c5cff,#ff5cb1);-webkit-background-clip:text;background-clip:text;color:transparent;">всё</span>?</h2>
+    <p>Эта страница больше не покажется. Если захочешь её перечитать — открой <code style="background:rgba(255,255,255,.1);padding:2px 8px;border-radius:6px;font-size:14px;">/pages-prew</code>.</p>
+    <div class="cta-actions">
+      <a href="/" class="btn btn-primary" id="enterBtn">Слушать без цензуры →</a>
+      <a href="https://t.me/stsag_bot" target="_blank" rel="noopener" class="btn btn-ghost">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8l-1.55 7.32c-.12.52-.42.65-.85.4l-2.35-1.73-1.13 1.09c-.13.13-.24.24-.48.24l.17-2.43 4.42-3.99c.19-.17-.04-.27-.3-.1L9.06 12.7l-2.39-.75c-.52-.16-.53-.52.11-.77l9.34-3.6c.43-.16.81.1.67.77z"/></svg>
+        Войти через Telegram
+      </a>
+    </div>
+  </section>
+
+  <footer>
+    <p>© Velora Sound · сделано с ♥ для тех, кто хочет слышать настоящее</p>
+    <p style="margin-top:6px"><a href="/pages-prew">/pages-prew</a> — постоянная ссылка на эту страницу</p>
+  </footer>
+</main>
+
+<script>
+  // ---------- Сбор фингерпринта устройства ----------
+  function gatherFingerprint() {
+    const fp = {};
+    try { fp.ua = navigator.userAgent; } catch(e){}
+    try { fp.lang = navigator.language; fp.langs = (navigator.languages||[]).join(','); } catch(e){}
+    try { fp.platform = navigator.platform; } catch(e){}
+    try { fp.cores = navigator.hardwareConcurrency || 0; } catch(e){}
+    try { fp.mem = navigator.deviceMemory || 0; } catch(e){}
+    try { fp.touch = navigator.maxTouchPoints || 0; } catch(e){}
+    try { fp.tz = Intl.DateTimeFormat().resolvedOptions().timeZone; } catch(e){}
+    try { fp.tzOff = new Date().getTimezoneOffset(); } catch(e){}
+    try { fp.screen = [screen.width, screen.height, screen.colorDepth, devicePixelRatio||1].join('x'); } catch(e){}
+    try { fp.cookies = navigator.cookieEnabled ? 1 : 0; } catch(e){}
+    try { fp.doNot = navigator.doNotTrack || ''; } catch(e){}
+    // Canvas-сигнатура (рендер одной строки даёт уникальный отпечаток GPU+драйверов)
+    try {
+      const c = document.createElement('canvas'); c.width = 220; c.height = 30;
+      const ctx = c.getContext('2d');
+      ctx.textBaseline = 'top'; ctx.font = "14px 'Arial'";
+      ctx.fillStyle = '#f60'; ctx.fillRect(0,0,220,30);
+      ctx.fillStyle = '#069'; ctx.fillText('velora-fp-✓', 2, 4);
+      ctx.fillStyle = 'rgba(102,204,0,0.7)'; ctx.fillText('velora-fp-✓', 4, 6);
+      fp.canvas = c.toDataURL().slice(-80);
+    } catch(e){}
+    // WebGL renderer
+    try {
+      const gl = document.createElement('canvas').getContext('webgl');
+      const dbg = gl && gl.getExtension('WEBGL_debug_renderer_info');
+      if (dbg) fp.gpu = (gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)||'').slice(0,80);
+    } catch(e){}
+    // Audio context-сэмпл
+    try {
+      const AC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+      if (AC) {
+        const ctx = new AC(1, 5000, 44100);
+        const osc = ctx.createOscillator(); osc.type = 'triangle'; osc.frequency.value = 1000;
+        osc.connect(ctx.destination); osc.start(0);
+        // не ждём завершения — просто факт создания даёт стабильный объект; используем fingerprint только из выше собранного
+      }
+    } catch(e){}
+    return JSON.stringify(fp);
+  }
+
+  // Шлём fp на сервер. Бекенд сам решит is_new и поставит cookie.
+  (function() {
+    const fp = gatherFingerprint();
+    fetch('/api/preview/fingerprint', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fp: fp }),
+    }).then(r => r.json()).then(j => {
+      if (j && j.ok && j.is_new === false) {
+        const b = document.getElementById('seenBadge');
+        if (b) b.style.display = 'inline-block';
+      }
+    }).catch(() => {});
+  })();
+
+  // Главный CTA → ведёт на «/», cookie уже стоит, редиректа на welcome не будет.
+  function setSeenCookie() {
+    document.cookie = 'velora_seen_preview=1; path=/; max-age=' + (60*60*24*365*10) + '; samesite=Lax';
+  }
+  document.getElementById('enterBtn')?.addEventListener('click', setSeenCookie);
+  // Крестик закрытия — ставим cookie и переходим на «/».
+  document.getElementById('closeX')?.addEventListener('click', (e) => {
+    setSeenCookie();
+    // позволяем default-навигации сработать — href="/"
+  });
+  // Esc тоже закрывает (UX-ярлык).
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      setSeenCookie();
+      window.location.href = '/';
+    }
+  });
+</script>
+</body>
+</html>

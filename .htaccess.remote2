@@ -1,0 +1,16 @@
+# === Безопасность ===
+<FilesMatch "(^\.env$|^\.env\..*|\.py[cod]?$|\.sqlite3?$|\.db$|\.log$|^\.gitignore$|^requirements.*\.txt$)">
+    Require all denied
+</FilesMatch>
+RedirectMatch 404 ^/(instance|scripts|venv|__pycache__)(/|$)
+
+<Files passenger_wsgi.py>
+    Require all granted
+</Files>
+
+# === Кэш статики ===
+<FilesMatch "\.(js|css|png|jpg|jpeg|gif|webp|svg|woff2?|ico)$">
+    Header set Cache-Control "public, max-age=2592000"
+</FilesMatch>
+
+SetEnv PYTHONUNBUFFERED 1
