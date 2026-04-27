@@ -99,7 +99,7 @@ def http_get_json(url: str) -> dict:
         url,
         headers={"X-Resolve-Token": TOKEN, "Accept": "application/json"},
     )
-    with urllib.request.urlopen(req, timeout=20) as r:
+    with urllib.request.urlopen(req, timeout=60) as r:
         return json.loads(r.read())
 
 
@@ -194,10 +194,18 @@ def resolve_one(q: str, target_dur: int) -> str | None:
 
 def main() -> int:
     print(f"[worker] base={BASE_URL} limit={LIMIT}")
-    try:
-        queue = http_get_json(f"{BASE_URL}/api/resolve/queue?limit={LIMIT}")
-    except Exception as exc:
-        print(f"[worker] queue fetch failed: {exc}", file=sys.stderr)
+    queue = None
+    last_exc: Exception | None = None
+    for attempt in range(1, 4):
+        try:
+            queue = http_get_json(f"{BASE_URL}/api/resolve/queue?limit={LIMIT}")
+            break
+        except Exception as exc:
+            last_exc = exc
+            print(f"[worker] queue fetch attempt {attempt} failed: {exc}", file=sys.stderr)
+            time.sleep(5 * attempt)
+    if queue is None:
+        print(f"[worker] queue fetch failed after retries: {last_exc}", file=sys.stderr)
         return 1
 
     items = queue.get("items") or []
