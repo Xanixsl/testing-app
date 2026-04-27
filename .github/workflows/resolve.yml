@@ -17,9 +17,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -30,5 +30,6 @@ jobs:
         env:
           VELORA_BASE_URL: ${{ secrets.VELORA_BASE_URL }}
           RESOLVE_PUSH_TOKEN: ${{ secrets.RESOLVE_PUSH_TOKEN }}
+          YT_COOKIES_B64: ${{ secrets.YT_COOKIES_B64 }}
           RESOLVE_LIMIT: "20"
         run: python .github/scripts/resolve_worker.py

@@ -13,9 +13,11 @@
 """
 from __future__ import annotations
 
+import base64
 import json
 import os
 import sys
+import tempfile
 import time
 import urllib.parse
 import urllib.request
@@ -27,10 +29,33 @@ TOKEN = (os.environ.get("RESOLVE_PUSH_TOKEN") or "").strip()
 LIMIT = int(os.environ.get("RESOLVE_LIMIT") or "20")
 PER_TRACK_TIMEOUT = 25  # секунд на один резолв через yt-dlp
 MIN_DURATION = 60       # отсекаем 30-сек preview
+PUSH_BATCH = 5          # сколько треков пушить за раз (Sprinthost иногда тормозит)
 
 if not BASE_URL or not TOKEN:
     print("ERR: VELORA_BASE_URL and RESOLVE_PUSH_TOKEN must be set", file=sys.stderr)
     sys.exit(1)
+
+# Опциональные YouTube cookies (Netscape txt) — base64 в Secret YT_COOKIES_B64
+# или прямой путь в YT_COOKIES_FILE.
+_YT_COOKIES_PATH: str | None = None
+_yt_b64 = (os.environ.get("YT_COOKIES_B64") or "").strip()
+if _yt_b64:
+    try:
+        _decoded = base64.b64decode(_yt_b64)
+        _tmp = tempfile.NamedTemporaryFile(
+            mode="wb", suffix=".txt", prefix="ytck_", delete=False
+        )
+        _tmp.write(_decoded)
+        _tmp.close()
+        _YT_COOKIES_PATH = _tmp.name
+        print(f"[worker] yt cookies loaded from secret ({len(_decoded)} bytes)")
+    except Exception as _e:
+        print(f"[worker] yt cookies decode err: {_e}", file=sys.stderr)
+elif os.environ.get("YT_COOKIES_FILE"):
+    _p = os.environ["YT_COOKIES_FILE"]
+    if os.path.isfile(_p):
+        _YT_COOKIES_PATH = _p
+        print(f"[worker] yt cookies file: {_p}")
 
 
 YDL_OPTS = {
@@ -61,9 +86,11 @@ YDL_OPTS = {
     },
 }
 
+# SoundCloud первым: его IP-бан Actions runner'ов не трогает,
+# а YouTube стабильно требует cookies на дата-центровых IP.
 SOURCES = [
-    ("ytsearch10", "YouTube"),
     ("scsearch10", "SoundCloud"),
+    ("ytsearch10", "YouTube"),
 ]
 
 
@@ -88,7 +115,7 @@ def http_post_json(url: str, payload: dict) -> dict:
             "Accept": "application/json",
         },
     )
-    with urllib.request.urlopen(req, timeout=30) as r:
+    with urllib.request.urlopen(req, timeout=60) as r:
         return json.loads(r.read())
 
 
@@ -142,10 +169,12 @@ def _pick_audio_url(info: dict, target_dur: int) -> str | None:
 
 
 def resolve_one(q: str, target_dur: int) -> str | None:
-    """Резолвит один трек: пробует YouTube → SoundCloud."""
+    """Резолвит один трек: пробует SoundCloud → YouTube."""
     for src, name in SOURCES:
         query = f"{src}:{q}"
         opts = dict(YDL_OPTS)
+        if name == "YouTube" and _YT_COOKIES_PATH:
+            opts["cookiefile"] = _YT_COOKIES_PATH
         try:
             with yt_dlp.YoutubeDL(opts) as ydl:
                 info = ydl.extract_info(query, download=False)
@@ -155,7 +184,11 @@ def resolve_one(q: str, target_dur: int) -> str | None:
                 return url
             print(f"  {name}: no audio in entries", flush=True)
         except Exception as exc:
-            print(f"  {name} ERR: {type(exc).__name__}: {exc}", flush=True)
+            msg = str(exc)
+            # Длинные YouTube-логи режем — забивают Actions log.
+            if len(msg) > 200:
+                msg = msg[:200] + "..."
+            print(f"  {name} ERR: {type(exc).__name__}: {msg}", flush=True)
     return None
 
 
@@ -196,12 +229,32 @@ def main() -> int:
         print("[worker] nothing resolved")
         return 0
 
-    try:
-        resp = http_post_json(f"{BASE_URL}/api/resolve/push", {"items": resolved})
-        print(f"[worker] push accepted={resp.get('accepted')} of {len(resolved)}")
-    except Exception as exc:
-        print(f"[worker] push failed: {exc}", file=sys.stderr)
-        return 2
+    # Пушим маленькими батчами — на Sprinthost запись в _resolver_cache.json
+    # синхронная и крупный POST иногда отваливается по таймауту.
+    total_accepted = 0
+    failed_batches = 0
+    for offset in range(0, len(resolved), PUSH_BATCH):
+        chunk = resolved[offset : offset + PUSH_BATCH]
+        try:
+            resp = http_post_json(
+                f"{BASE_URL}/api/resolve/push", {"items": chunk}
+            )
+            acc = int(resp.get("accepted") or 0)
+            total_accepted += acc
+            print(
+                f"[worker] push batch {offset}-{offset+len(chunk)}: "
+                f"accepted={acc}/{len(chunk)}",
+                flush=True,
+            )
+        except Exception as exc:
+            failed_batches += 1
+            print(f"[worker] push batch {offset} failed: {exc}", file=sys.stderr)
+    print(
+        f"[worker] DONE total_accepted={total_accepted} "
+        f"of {len(resolved)} (failed_batches={failed_batches})"
+    )
+    # Не фейлим весь job, даже если часть батчей не прошла —
+    # принятые URL уже попали в кэш.
     return 0
 
 
