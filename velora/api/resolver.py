@@ -722,6 +722,25 @@ def resolve_stream(query: str, target_duration: int = 0, quality: str = "hi") ->
         _flog(f"PICK CACHE-DISK q={base!r} url=YES")
         return cached[1]
 
+    # ------------------------------------------------------------------
+    # «БЫСТРЫЙ ПРОМАХ» (RESOLVER_LIVE_DISABLED=1):
+    # На Sprinthost-IP yt-dlp и SoundCloud полностью забанены (SSL EOF),
+    # каждый «живой» резолв = 30-60 сек ожидания → 503. За это время
+    # клиент уже мог бы 60 раз получить 30-сек превью и спокойно играть,
+    # пока внешний GH Actions worker подтянет полный URL в кэш.
+    # Включаем «only-cache + enqueue» режим — отдаём None ЗА ~5мс, сервер
+    # моментально проксирует Deezer-preview, а трек уезжает в очередь
+    # воркеру. Следующий клик/перезаход — уже полная версия из кэша.
+    # ------------------------------------------------------------------
+    import os as _envos
+    if _envos.environ.get("RESOLVER_LIVE_DISABLED", "0") == "1":
+        try:
+            queue_add(base, int(target_duration or 0), quality)
+            _flog(f"FAST-MISS q={base!r} → queue (live disabled)")
+        except Exception as exc:
+            _flog(f"queue_add err: {exc}")
+        return None
+
     # ---- Piped public API: ВЫКЛЮЧЕНО ---------------------------------
     # На апрель 2026 публичные Piped-инстансы массово недоступны (10 из 11
     # отдают 502/503/timeout/DNS-fail), YouTube их жёстко давит. Включать

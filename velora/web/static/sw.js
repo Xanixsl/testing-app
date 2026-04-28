@@ -6,9 +6,9 @@
 //   - Критическая статика (app.js, *.css, sw.js) — network-first, в кэш.
 //   - Прочая /static/* — stale-while-revalidate.
 //   - /api/stream и /api/* — НЕ кэшируем (offline-плеер сам играет из IDB).
-const VERSION = "velora-sw-v75";
-const STATIC_CACHE = "velora-static-v69";
-const SHELL_CACHE = "velora-shell-v69";
+const VERSION = "velora-sw-v76";
+const STATIC_CACHE = "velora-static-v70";
+const SHELL_CACHE = "velora-shell-v70";
 const API_CACHE = "velora-api-v1";
 const SHELL_URL = "/";
 const NF_URL = "/static/404.html";
@@ -18,6 +18,7 @@ const PRECACHE_STATIC = [
     "/static/app.js",
     "/static/redesign.css",
     "/static/style.css",
+    "/static/mobile.css",
     "/static/manifest.webmanifest",
     "/static/404.html",
     "/static/icons/icon-192.png",

@@ -132,6 +132,66 @@ function markPlaylistDownloaded(pid, isFull) {
 }
 
 const audio = $("#audio");
+// iOS требует playsinline + крутая обложка через MediaSession,
+// чтобы аудио продолжалось при заблокированном экране и блок
+// управления показывался на lock-screen / Control Center.
+try {
+    audio.setAttribute("playsinline", "");
+    audio.setAttribute("webkit-playsinline", "");
+    audio.setAttribute("preload", "auto");
+    audio.crossOrigin = "anonymous";
+} catch {}
+
+// === MediaSession (iOS / Android background playback + lock-screen controls)
+function _setupMediaSession(t) {
+    try {
+        if (!("mediaSession" in navigator) || !t) return;
+        const cover = t.album_cover || t.cover_big || t.cover_small || "";
+        const artwork = cover ? [
+            { src: cover, sizes: "96x96",   type: "image/jpeg" },
+            { src: cover, sizes: "192x192", type: "image/jpeg" },
+            { src: cover, sizes: "256x256", type: "image/jpeg" },
+            { src: cover, sizes: "384x384", type: "image/jpeg" },
+            { src: cover, sizes: "512x512", type: "image/jpeg" },
+        ] : [];
+        navigator.mediaSession.metadata = new MediaMetadata({
+            title: t.title || "",
+            artist: t.artist || "",
+            album: t.album || "Velora",
+            artwork,
+        });
+        const _h = (a, fn) => { try { navigator.mediaSession.setActionHandler(a, fn); } catch {} };
+        _h("play",  () => { try { audio.play(); } catch {} });
+        _h("pause", () => { try { audio.pause(); } catch {} });
+        _h("previoustrack", () => { try { playPrev(); } catch {} });
+        _h("nexttrack",     () => { try { playNext(); } catch {} });
+        _h("seekbackward",  (d) => { try { audio.currentTime = Math.max(0, audio.currentTime - (d.seekOffset || 10)); } catch {} });
+        _h("seekforward",   (d) => { try { audio.currentTime = Math.min(audio.duration||1e9, audio.currentTime + (d.seekOffset || 10)); } catch {} });
+        _h("seekto", (d) => {
+            if (d.fastSeek && "fastSeek" in audio) { try { audio.fastSeek(d.seekTime); } catch {} return; }
+            try { audio.currentTime = d.seekTime; } catch {}
+        });
+        _h("stop", () => { try { audio.pause(); audio.currentTime = 0; } catch {} });
+    } catch {}
+}
+function _updateMediaPosition() {
+    try {
+        if (!("mediaSession" in navigator) || !navigator.mediaSession.setPositionState) return;
+        const dur = isFinite(audio.duration) ? audio.duration : 0;
+        if (!dur) return;
+        navigator.mediaSession.setPositionState({
+            duration: dur,
+            position: Math.min(dur, audio.currentTime || 0),
+            playbackRate: audio.playbackRate || 1,
+        });
+    } catch {}
+}
+audio.addEventListener("play",  () => { try { navigator.mediaSession.playbackState = "playing"; } catch {} });
+audio.addEventListener("pause", () => { try { navigator.mediaSession.playbackState = "paused";  } catch {} });
+audio.addEventListener("loadedmetadata", _updateMediaPosition);
+audio.addEventListener("seeked",         _updateMediaPosition);
+// Реже чем timeupdate (раз в ~5с) — iOS этого достаточно, экономим CPU.
+setInterval(() => { if (!audio.paused) _updateMediaPosition(); }, 5000);
 
 // =================================================================
 // API
@@ -4861,6 +4921,8 @@ async function playCurrent() {
         }
         state._lastApiStreamUrl = url;
         audio.src = srcUrl;
+        // iOS lock-screen + Android notification controls.
+        _setupMediaSession(t);
         // Параллельно узнаём фактический источник (full/preview) у сервера.
         state._previewKnown = false;
         state._isPreview = false;
@@ -6834,27 +6896,85 @@ function openTrackMenu(track, anchor) {
     if (!track) return;
     if (!state.me) return openAuth();
     let menu = document.getElementById("trackMenu");
+    let backdrop = document.getElementById("trackMenuBackdrop");
     if (!menu) {
         menu = document.createElement("div");
         menu.id = "trackMenu";
         menu.className = "track-menu";
         menu.hidden = true;
         document.body.appendChild(menu);
+        backdrop = document.createElement("div");
+        backdrop.id = "trackMenuBackdrop";
+        backdrop.className = "track-menu-backdrop";
+        backdrop.hidden = true;
+        document.body.appendChild(backdrop);
+        const _close = () => {
+            menu.hidden = true; backdrop.hidden = true;
+            document.body.classList.remove("track-menu-open");
+        };
+        backdrop.addEventListener("click", _close);
         document.addEventListener("click", (e) => {
             if (menu.hidden) return;
             if (menu.contains(e.target)) return;
             if (e.target.closest && e.target.closest("[data-act=more]")) return;
-            menu.hidden = true;
+            _close();
         });
-        window.addEventListener("scroll", () => { menu.hidden = true; }, true);
+        window.addEventListener("scroll", () => { if (!menu.hidden) _close(); }, true);
+        menu._close = _close;
     }
     const pls = Array.isArray(state.playlists) ? state.playlists : [];
     const safeTitle = escapeHtml(track.title || "трек");
     const safeArtist = escapeHtml(track.artist || "");
+    const tkey = (track.source || "deezer") + ":" + (track.source_id || "");
+    const isLiked = state.likedKeys && state.likedKeys.has(tkey);
+    const isDisliked = state.dislikedKeys && state.dislikedKeys.has(tkey);
+    const cover = track.album_cover || track.cover_big || track.cover_small || "";
+    const isMobile = window.matchMedia && window.matchMedia("(max-width: 720px)").matches;
+    menu.classList.toggle("is-sheet", !!isMobile);
     menu.innerHTML = `
+        <div class="tm-grip" aria-hidden="true"></div>
         <div class="tm-head">
-            <div class="tm-t">${safeTitle}</div>
-            <div class="tm-a">${safeArtist}</div>
+            <div class="tm-head-cover" ${cover ? `style="background-image:${_cssUrl(cover)}"` : ""}></div>
+            <div class="tm-head-meta">
+                <div class="tm-t">${safeTitle}</div>
+                <div class="tm-a">${safeArtist}</div>
+            </div>
+        </div>
+        <div class="tm-actions">
+            <button class="tm-action" data-tm="like">
+                <svg class="ic"><use href="#${isLiked ? "i-heart-fill" : "i-heart"}"/></svg>
+                <span>${isLiked ? "Убрать из «Нравится»" : "Нравится"}</span>
+            </button>
+            <button class="tm-action" data-tm="wave">
+                <svg class="ic"><use href="#i-wave"/></svg>
+                <span>Моя волна по треку</span>
+            </button>
+            <button class="tm-action" data-tm="next">
+                <svg class="ic"><use href="#i-next"/></svg>
+                <span>Играть следующим</span>
+            </button>
+            <button class="tm-action" data-tm="queue">
+                <svg class="ic"><use href="#i-list"/></svg>
+                <span>Добавить в конец очереди</span>
+            </button>
+            <button class="tm-action" data-tm="dislike">
+                <svg class="ic"><use href="#i-dislike"/></svg>
+                <span>${isDisliked ? "Убрать «Не нравится»" : "Не нравится"}</span>
+            </button>
+            <button class="tm-action" data-tm="share">
+                <svg class="ic"><use href="#i-share"/></svg>
+                <span>Поделиться</span>
+            </button>
+            ${track.album_id ? `
+            <button class="tm-action" data-tm="album">
+                <svg class="ic"><use href="#i-library"/></svg>
+                <span>Перейти к альбому</span>
+            </button>` : ""}
+            ${(track.artist_id || (track.artists && track.artists[0])) ? `
+            <button class="tm-action" data-tm="artist">
+                <svg class="ic"><use href="#i-mic"/></svg>
+                <span>Перейти к исполнителю</span>
+            </button>` : ""}
         </div>
         <div class="tm-section">Добавить в плейлист</div>
         <div class="tm-items">
@@ -6869,19 +6989,70 @@ function openTrackMenu(track, anchor) {
             <button class="tm-create"><svg class="ic"><use href="#i-plus"/></svg> Создать новый плейлист</button>
         </div>`;
     menu.hidden = false;
-    // Позиционируем рядом с кнопкой
-    const r = anchor.getBoundingClientRect();
-    const mw = 280;
-    const left = Math.max(8, Math.min(window.scrollX + r.right - mw, window.scrollX + window.innerWidth - mw - 8));
-    let top = window.scrollY + r.bottom + 6;
-    // Если меню не помещается снизу — открываем вверх
-    const mh = menu.offsetHeight || 320;
-    if (r.bottom + mh + 12 > window.innerHeight) {
-        top = window.scrollY + r.top - mh - 6;
+    if (isMobile) {
+        // Bottom-sheet: занимает низ экрана, фон — затемнённый backdrop.
+        menu.style.left = "";
+        menu.style.top = "";
+        menu.style.width = "";
+        backdrop.hidden = false;
+        document.body.classList.add("track-menu-open");
+    } else {
+        backdrop.hidden = true;
+        document.body.classList.remove("track-menu-open");
+        // Позиционируем рядом с кнопкой
+        const r = anchor.getBoundingClientRect();
+        const mw = 320;
+        const left = Math.max(8, Math.min(window.scrollX + r.right - mw, window.scrollX + window.innerWidth - mw - 8));
+        let top = window.scrollY + r.bottom + 6;
+        const mh = menu.offsetHeight || 480;
+        if (r.bottom + mh + 12 > window.innerHeight) {
+            top = window.scrollY + r.top - mh - 6;
+        }
+        menu.style.left = left + "px";
+        menu.style.top = top + "px";
+        menu.style.width = mw + "px";
     }
-    menu.style.left = left + "px";
-    menu.style.top = top + "px";
-    menu.style.width = mw + "px";
+
+    // Действия из верхней панели
+    menu.querySelectorAll(".tm-action").forEach(b => {
+        b.onclick = async (e) => {
+            e.stopPropagation();
+            const act = b.dataset.tm;
+            try {
+                if (act === "like") {
+                    if (typeof toggleLike === "function") await toggleLike(track);
+                    else await api("/api/likes", { method: "POST", body: track });
+                } else if (act === "dislike") {
+                    if (typeof toggleDislike === "function") await toggleDislike(track);
+                    else await api("/api/dislikes", { method: "POST", body: track });
+                } else if (act === "next") {
+                    if (typeof playNextInQueue === "function") playNextInQueue(track);
+                    else { state.queue.splice(state.qi + 1, 0, track); refreshTrackRows && refreshTrackRows(); }
+                    showToast("Будет следующим");
+                } else if (act === "queue") {
+                    state.queue.push(track); refreshTrackRows && refreshTrackRows();
+                    showToast("Добавлено в очередь");
+                } else if (act === "wave") {
+                    if (typeof startTrackWave === "function") startTrackWave(track);
+                    else if (typeof go === "function") go("wave");
+                } else if (act === "share") {
+                    const url = `${location.origin}/?t=${encodeURIComponent((track.source||"deezer")+":"+(track.source_id||""))}`;
+                    if (navigator.share) { try { await navigator.share({ title: track.title || "Трек", text: `${track.artist} — ${track.title}`, url }); } catch {} }
+                    else { try { await navigator.clipboard.writeText(url); showToast("Ссылка скопирована"); } catch { showToast(url); } }
+                } else if (act === "album" && track.album_id) {
+                    if (typeof go === "function") go(`album/${track.source||"deezer"}/${track.album_id}`);
+                    else location.hash = `#/album/${track.source||"deezer"}/${track.album_id}`;
+                } else if (act === "artist") {
+                    const aid = track.artist_id || (track.artists && track.artists[0] && track.artists[0].id);
+                    if (aid) {
+                        if (typeof go === "function") go(`artist/${track.source||"deezer"}/${aid}`);
+                        else location.hash = `#/artist/${track.source||"deezer"}/${aid}`;
+                    }
+                }
+            } catch (err) { showToast(err.message || "Ошибка"); }
+            if (menu._close) menu._close();
+        };
+    });
 
     menu.querySelectorAll(".tm-item").forEach(b => {
         b.onclick = async (e) => {

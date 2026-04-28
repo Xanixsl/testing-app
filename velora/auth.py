@@ -82,6 +82,12 @@ class TelegramLoginBot:
         # _support_relay[admin_message_id]=user_chat_id — ответ админа возвращается автору.
         self._support_mode: dict[int, str] = {}
         self._support_relay: dict[int, int] = {}
+        # Пул потоков для параллельной обработки update'ов: пока один _handle
+        # ходит в БД/сеть, следующий long-poll уже готов принять новый апдейт.
+        # Без этого все сообщения от пользователей идут строго по очереди и
+        # 5-10 одновременных юзеров получают «бот тупит 30+ сек».
+        from concurrent.futures import ThreadPoolExecutor as _TPE
+        self._pool = _TPE(max_workers=8, thread_name_prefix="velora-tg")
 
     # --- Telegram low-level
     def _api(self, method: str, **payload) -> dict:
@@ -225,10 +231,17 @@ class TelegramLoginBot:
                 continue
             for upd in data.get("result", []):
                 offset = max(offset, upd["update_id"] + 1)
+                # Обработка в пуле — не блокирует следующий getUpdates.
+                def _run(u=upd):
+                    try:
+                        self._handle(u)
+                    except Exception as exc:  # noqa: BLE001
+                        log.exception("[VELORA TG] handler crashed: %s", exc)
                 try:
-                    self._handle(upd)
-                except Exception as exc:  # noqa: BLE001
-                    log.exception("[VELORA TG] handler crashed: %s", exc)
+                    self._pool.submit(_run)
+                except Exception:
+                    # Если пул переполнен/умер — обработаем синхронно.
+                    _run()
 
     # --- обработка
     def _handle(self, upd: dict) -> None:

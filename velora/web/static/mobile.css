@@ -1,0 +1,791 @@
+/* =========================================================
+   VELORA — mobile polish (Phase L.13)
+   Подключается ПОСЛЕ style.css и redesign.css.
+   Все правила завёрнуты в @media (max-width: 720px) или
+   используют env(safe-area-inset-*) для iOS-нотчей.
+   ========================================================= */
+
+:root {
+    --vsa-top:    env(safe-area-inset-top, 0px);
+    --vsa-bottom: env(safe-area-inset-bottom, 0px);
+    --vsa-left:   env(safe-area-inset-left, 0px);
+    --vsa-right:  env(safe-area-inset-right, 0px);
+}
+
+/* ===== iOS standalone PWA: фон под статус-баром остаётся тёмным,
+   контент уезжает под safe-area. ===== */
+@media (display-mode: standalone) {
+    html, body { background: #050505; }
+}
+
+/* ============================================================
+   1. ПОЛНОЭКРАННЫЙ ПЛЕЕР — мобильная версия
+   ============================================================ */
+@media (max-width: 720px) {
+    .fullplayer {
+        position: fixed !important;
+        inset: 0 !important;
+        z-index: 9000 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        grid-template-columns: none !important;
+        background:
+            radial-gradient(120% 70% at 50% 0%, rgba(180, 107, 255, 0.18), transparent 65%),
+            linear-gradient(180deg, #1a0f1a 0%, #0a0306 60%, #050103 100%) !important;
+        padding:
+            calc(var(--vsa-top) + 14px)
+            calc(var(--vsa-right) + 16px)
+            calc(var(--vsa-bottom) + 16px)
+            calc(var(--vsa-left) + 16px) !important;
+        gap: 14px !important;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+    }
+    /* Плеер закрыт — спрятан */
+    .fullplayer[hidden] { display: none !important; }
+
+    .fullplayer .fp-close {
+        position: absolute;
+        top: calc(var(--vsa-top) + 8px);
+        right: 12px;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.06);
+        border-radius: 50%;
+        z-index: 5;
+    }
+    .fullplayer .fp-hot-close {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 40px;
+        z-index: 1;
+    }
+    /* Маленький "grip" сверху (как на iOS) */
+    .fullplayer::before {
+        content: "";
+        position: absolute;
+        top: calc(var(--vsa-top) + 8px);
+        left: 50%;
+        transform: translateX(-50%);
+        width: 40px;
+        height: 5px;
+        border-radius: 3px;
+        background: rgba(255, 255, 255, 0.18);
+        z-index: 4;
+    }
+
+    .fullplayer .fp-stage {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: flex-start;
+        gap: 16px;
+        padding-top: 28px;
+        max-width: 460px;
+        width: 100%;
+        margin: 0 auto;
+    }
+
+    .fullplayer .fp-card {
+        width: min(86vw, 380px);
+        max-width: 100%;
+        aspect-ratio: 1 / 1;
+        height: auto !important;
+        margin: 4px auto 8px;
+        border-radius: 22px;
+        box-shadow:
+            0 24px 56px rgba(0, 0, 0, 0.55),
+            0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+        overflow: hidden;
+    }
+    .fullplayer .fp-card img {
+        width: 100%; height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+    /* Hover-tools на тачскрине бесполезны — скрываем */
+    .fullplayer .fp-cover-tools { display: none !important; }
+
+    .fullplayer .fp-meta {
+        text-align: left;
+        padding: 0 4px;
+    }
+    .fullplayer .fp-title {
+        font-size: 22px;
+        font-weight: 700;
+        line-height: 1.2;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .fullplayer .fp-artist {
+        font-size: 15px;
+        opacity: 0.7;
+        margin-top: 4px;
+    }
+
+    .fullplayer .fp-seek {
+        margin-top: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    .fullplayer .fp-seek-track {
+        height: 4px;
+        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.12);
+        position: relative;
+    }
+    .fullplayer .fp-seek-time {
+        font-size: 12px;
+        opacity: 0.6;
+        font-variant-numeric: tabular-nums;
+    }
+    .fullplayer .fp-seek {
+        flex-direction: row !important;
+        align-items: center;
+        gap: 10px !important;
+    }
+    .fullplayer .fp-seek > .fp-seek-track,
+    .fullplayer .fp-seek > div:not(.fp-seek-time) { flex: 1 1 auto; }
+
+    /* Большая жёлтая play-кнопка (как на скрине) */
+    .fullplayer .fp-controls-row {
+        display: grid !important;
+        grid-template-columns: 44px 44px 1fr 44px 44px;
+        align-items: center;
+        justify-items: center;
+        gap: 8px;
+        padding: 12px 4px;
+        margin-top: 6px;
+    }
+    .fullplayer .fp-controls-row .fp-mini,
+    .fullplayer .fp-controls-row .fp-action {
+        width: 44px; height: 44px;
+        background: transparent;
+        border: 0;
+        color: #fff;
+        opacity: 0.85;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .fullplayer .fp-controls-row .fp-mini .ic,
+    .fullplayer .fp-controls-row .fp-action .ic {
+        width: 26px; height: 26px;
+    }
+    .fullplayer .fp-controls-row #fpPlayBtn,
+    .fullplayer .fp-controls-row .fp-play {
+        width: 72px !important;
+        height: 72px !important;
+        border-radius: 50%;
+        background: var(--accent, #ffd400) !important;
+        color: #0a0a0a !important;
+        box-shadow: 0 12px 32px rgba(255, 212, 0, 0.35);
+        justify-self: center;
+    }
+    .fullplayer .fp-controls-row #fpPlayBtn .ic,
+    .fullplayer .fp-controls-row .fp-play .ic {
+        width: 32px; height: 32px;
+        color: #0a0a0a;
+    }
+    /* Скрываем второстепенные кнопки на узком — они уже в шапке/нижнем меню */
+    .fullplayer .fp-controls-row #fpAddBtn,
+    .fullplayer .fp-controls-row #fpLyricsToggle { display: none; }
+
+    /* Доп. ряд иконок: shuffle / like / dislike / repeat — снизу */
+    .fullplayer .fp-extras {
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 4px 0;
+        opacity: 0.85;
+    }
+
+    /* Тексты не мешают — сворачиваются вниз сами через скролл */
+    .fullplayer .fp-lyrics-wrap {
+        margin-top: 10px;
+        padding: 0 2px;
+    }
+    .fullplayer .fp-lyrics {
+        max-height: none !important;
+        font-size: 16px;
+        line-height: 1.5;
+    }
+    .fullplayer.lyrics-hidden .fp-lyrics-wrap,
+    .fullplayer.no-lyrics .fp-lyrics-wrap { display: none; }
+}
+
+/* ============================================================
+   2. BOTTOM-SHEET для контекстного меню трека (3 точки)
+   ============================================================ */
+.track-menu-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 9998;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    animation: tmFadeIn 180ms ease;
+}
+@keyframes tmFadeIn   { from { opacity: 0; } to { opacity: 1; } }
+@keyframes tmSlideUp  { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+.track-menu .tm-grip { display: none; }
+
+.track-menu .tm-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.track-menu .tm-head-cover {
+    width: 48px; height: 48px;
+    border-radius: 8px;
+    flex-shrink: 0;
+    background-color: rgba(255, 255, 255, 0.06);
+    background-size: cover;
+    background-position: center;
+}
+.track-menu .tm-head-meta { min-width: 0; flex: 1; }
+.track-menu .tm-head .tm-t {
+    font-size: 15px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.track-menu .tm-head .tm-a {
+    font-size: 13px;
+    opacity: 0.6;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.track-menu .tm-actions {
+    display: flex;
+    flex-direction: column;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.track-menu .tm-action {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 16px;
+    background: transparent;
+    border: 0;
+    color: #fff;
+    font-size: 15px;
+    text-align: left;
+    cursor: pointer;
+    transition: background 120ms;
+}
+.track-menu .tm-action:hover { background: rgba(255, 255, 255, 0.06); }
+.track-menu .tm-action .ic {
+    width: 22px; height: 22px;
+    opacity: 0.85;
+    flex-shrink: 0;
+}
+
+/* Mobile bottom-sheet variant */
+@media (max-width: 720px) {
+    body.track-menu-open { overflow: hidden; }
+    .track-menu.is-sheet {
+        position: fixed !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        top: auto !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        max-height: 80vh;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+        border-radius: 22px 22px 0 0;
+        background: #1a1a1f;
+        border: 0;
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+        box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.6);
+        padding-bottom: calc(var(--vsa-bottom) + 12px);
+        animation: tmSlideUp 220ms cubic-bezier(.2,.8,.2,1);
+        z-index: 9999;
+    }
+    .track-menu.is-sheet .tm-grip {
+        display: block;
+        width: 40px; height: 4px;
+        border-radius: 3px;
+        background: rgba(255, 255, 255, 0.22);
+        margin: 8px auto 4px;
+    }
+    .track-menu.is-sheet .tm-action {
+        padding: 14px 18px;
+        font-size: 16px;
+    }
+    .track-menu.is-sheet .tm-action .ic { width: 24px; height: 24px; }
+    .track-menu.is-sheet .tm-section { padding: 14px 18px 6px; }
+    .track-menu.is-sheet .tm-items { padding: 0 8px; }
+    .track-menu.is-sheet .tm-item { padding: 10px; }
+}
+
+/* ============================================================
+   3. ГЛАВНАЯ — крупный wave-hero (как на скрине Я.Музыки)
+   ============================================================ */
+@media (max-width: 720px) {
+    .home-grid { gap: 18px !important; padding: 12px 14px !important; }
+
+    .wave-hero {
+        position: relative;
+        min-height: 280px;
+        border-radius: 22px;
+        overflow: hidden;
+        background:
+            radial-gradient(80% 60% at 50% 50%, #ffd400 0%, #ff5b9c 40%, #b46bff 80%, transparent 100%),
+            #0a0a0a;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        padding: 30px 16px;
+        text-align: center;
+    }
+    .wave-hero .wave-blob {
+        position: absolute;
+        inset: -20%;
+        background:
+            radial-gradient(40% 40% at 30% 30%, rgba(255, 91, 156, 0.6), transparent 70%),
+            radial-gradient(40% 40% at 70% 60%, rgba(180, 107, 255, 0.5), transparent 70%),
+            radial-gradient(50% 50% at 50% 50%, rgba(255, 212, 0, 0.5), transparent 70%);
+        filter: blur(40px);
+        animation: waveBlob 9s ease-in-out infinite alternate;
+        z-index: 0;
+    }
+    @keyframes waveBlob {
+        0%   { transform: translate(0,0) scale(1); }
+        100% { transform: translate(2%,-2%) scale(1.05); }
+    }
+    .wave-hero .wave-inner {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 14px;
+    }
+    .wave-hero .wave-play {
+        background: rgba(0,0,0,0.32);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border: 0;
+        color: #fff;
+        font-size: 22px;
+        font-weight: 700;
+        padding: 14px 22px;
+        border-radius: 14px;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        box-shadow: 0 10px 28px rgba(0,0,0,0.35);
+    }
+    .wave-hero .wave-sub {
+        background: rgba(255,255,255,0.16);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        color: #fff;
+        border: 0;
+        padding: 8px 16px;
+        border-radius: 999px;
+        font-size: 13px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .shortcuts {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px !important;
+    }
+    .shortcut {
+        display: flex !important;
+        align-items: center;
+        gap: 10px;
+        padding: 10px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 14px;
+        min-height: 64px;
+    }
+    .shortcut-cover {
+        width: 48px; height: 48px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #ff5b9c, #b46bff);
+        flex-shrink: 0;
+    }
+    .shortcut .name { font-size: 14px; font-weight: 600; line-height: 1.2; }
+    .shortcut .sub  { font-size: 11px; opacity: 0.6; line-height: 1.2; }
+
+    .section-title {
+        font-size: 20px !important;
+        font-weight: 700 !important;
+        margin: 8px 4px 8px !important;
+    }
+}
+
+/* ============================================================
+   4. ПОИСК — мобильный layout
+   ============================================================ */
+@media (max-width: 720px) {
+    .topbar, .search-bar {
+        position: sticky;
+        top: var(--vsa-top);
+        z-index: 50;
+        background: linear-gradient(180deg, #050505 80%, transparent);
+        padding: 10px 14px;
+    }
+    .topbar input[type="search"], #q, .search-bar input {
+        width: 100%;
+        height: 48px;
+        padding: 0 18px 0 44px;
+        border-radius: 999px;
+        background: #1a1a1f;
+        border: 0;
+        color: #fff;
+        font-size: 16px;
+    }
+    /* Дискавери (когда поиск пустой) — крупные карточки */
+    .discover-section {
+        padding: 0 14px;
+        margin-bottom: 18px;
+    }
+    .discover-section h2,
+    .discover-title {
+        font-size: 20px;
+        font-weight: 700;
+        margin: 14px 0 10px;
+    }
+}
+
+/* ============================================================
+   5. КОЛЛЕКЦИЯ / ПЛЕЙЛИСТЫ — мобильный
+   ============================================================ */
+@media (max-width: 720px) {
+    .coll-head { padding: 14px 16px 6px !important; }
+    .coll-head h1 { font-size: 28px !important; font-weight: 800 !important; }
+    .coll-head .sub { font-size: 13px !important; opacity: 0.6; }
+
+    .coll-favorites {
+        margin: 0 14px 16px !important;
+        padding: 14px !important;
+        border-radius: 16px !important;
+        background:
+            linear-gradient(135deg, rgba(255, 91, 156, 0.25), rgba(180, 107, 255, 0.18)) !important;
+        display: flex !important;
+        align-items: center;
+        gap: 12px;
+    }
+    .coll-favorites .heart {
+        width: 56px; height: 56px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #ff5b9c, #b46bff);
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+    }
+    .coll-favorites .name { font-size: 17px; font-weight: 700; }
+    .coll-favorites .stats { font-size: 12px; opacity: 0.7; }
+    .coll-favorites .btn-primary {
+        width: 44px; height: 44px;
+        border-radius: 50%;
+        background: var(--accent, #ffd400);
+        color: #0a0a0a;
+        border: 0;
+        display: inline-flex; align-items: center; justify-content: center;
+    }
+
+    .section-row { padding: 0 14px; }
+
+    /* Сетка плейлистов: 2 колонки */
+    .cards#myPlsGrid {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        padding: 0 14px 16px !important;
+    }
+    .card.card-playlist {
+        background: transparent;
+        padding: 0;
+    }
+    .card.card-playlist .card-cover {
+        aspect-ratio: 1 / 1;
+        border-radius: 14px;
+        overflow: hidden;
+    }
+    .card.card-playlist .card-cover.placeholder {
+        background: rgba(255, 255, 255, 0.06);
+        display: flex; align-items: center; justify-content: center;
+        border: 2px dashed rgba(255, 255, 255, 0.14);
+    }
+    .card.card-playlist .c-title {
+        font-size: 13px;
+        font-weight: 600;
+        margin-top: 6px;
+    }
+
+    /* Список треков "мне нравится" — компактнее */
+    .tracks-2col { padding: 0 8px 100px; }
+}
+
+/* ============================================================
+   6. АККАУНТ — мобильная версия профиля
+   ============================================================ */
+@media (max-width: 720px) {
+    .profile-page { padding-bottom: calc(120px + var(--vsa-bottom)); }
+    .profile-cover {
+        height: 140px !important;
+        border-radius: 0 0 18px 18px;
+    }
+    .profile-card {
+        margin: -40px 14px 0 !important;
+        padding: 14px !important;
+        background: #14141a !important;
+        border-radius: 18px;
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        text-align: center;
+        gap: 10px;
+    }
+    .profile-card .pavatar {
+        width: 84px !important;
+        height: 84px !important;
+        margin: 0 auto;
+        font-size: 32px;
+        border: 3px solid #14141a;
+    }
+    .profile-card h1 { font-size: 22px !important; }
+    .profile-card .phandle { font-size: 13px; opacity: 0.7; }
+    .profile-actions {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-top: 6px;
+    }
+    .profile-actions .btn-secondary {
+        width: 100%;
+        padding: 10px;
+        font-size: 13px;
+        border-radius: 10px;
+    }
+    .profile-actions #pShare { grid-column: 1 / -1; }
+}
+
+/* ============================================================
+   7. AUTH МОДАЛКА — fullscreen на мобиле, красивая
+   ============================================================ */
+@media (max-width: 720px) {
+    .modal#authModal { padding: 0 !important; }
+    .modal#authModal .modal-box.auth-box {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-height: 100dvh;
+        border-radius: 0 !important;
+        padding:
+            calc(var(--vsa-top) + 24px)
+            calc(var(--vsa-right) + 22px)
+            calc(var(--vsa-bottom) + 22px)
+            calc(var(--vsa-left) + 22px) !important;
+        background:
+            radial-gradient(80% 50% at 50% 0%, rgba(180, 107, 255, 0.22), transparent 70%),
+            #0a0a0f !important;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+    }
+    .modal#authModal .auth-title {
+        font-size: 28px !important;
+        font-weight: 800 !important;
+        text-align: center;
+        margin: 24px 0 6px !important;
+        background: linear-gradient(90deg, #ffd400, #ff5b9c, #b46bff);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+    }
+    .modal#authModal .auth-hint {
+        text-align: center;
+        opacity: 0.7;
+        font-size: 14px;
+        margin: 0 0 22px !important;
+    }
+    .modal#authModal .auth-step {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        flex: 1;
+    }
+    .modal#authModal .phone-row {
+        display: flex !important;
+        gap: 8px;
+        background: #14141a;
+        border-radius: 14px;
+        padding: 4px;
+    }
+    .modal#authModal .phone-row select,
+    .modal#authModal .phone-row input {
+        background: transparent;
+        border: 0;
+        color: #fff;
+        font-size: 16px;
+        padding: 14px 12px;
+    }
+    .modal#authModal .phone-row input { flex: 1; }
+
+    .modal#authModal .reg-fields {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
+    .modal#authModal .reg-field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    .modal#authModal .reg-field span {
+        font-size: 13px;
+        opacity: 0.7;
+        padding-left: 4px;
+    }
+    .modal#authModal .reg-field input {
+        height: 50px;
+        padding: 0 16px;
+        background: #14141a;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 12px;
+        color: #fff;
+        font-size: 16px;
+    }
+    .modal#authModal .reg-field input:focus {
+        outline: 0;
+        border-color: var(--accent, #b46bff);
+    }
+    .modal#authModal #loginCodeInput {
+        width: 100%;
+        height: 60px;
+        text-align: center;
+        font-size: 28px;
+        letter-spacing: 6px;
+        background: #14141a;
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 14px;
+        color: #fff;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .modal#authModal .modal-actions,
+    .modal#authModal .auth-actions-row {
+        display: flex !important;
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 6px;
+    }
+    .modal#authModal .btn-primary,
+    .modal#authModal .btn-secondary {
+        width: 100%;
+        height: 52px;
+        font-size: 16px;
+        font-weight: 700;
+        border-radius: 14px;
+        border: 0;
+        cursor: pointer;
+    }
+    .modal#authModal .btn-primary {
+        background: linear-gradient(90deg, #ffd400, #ff5b9c);
+        color: #0a0a0a;
+        box-shadow: 0 10px 28px rgba(255, 91, 156, 0.32);
+    }
+    .modal#authModal .btn-secondary {
+        background: rgba(255, 255, 255, 0.08);
+        color: #fff;
+    }
+
+    .modal#authModal .auth-social-divider {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        opacity: 0.5;
+        font-size: 12px;
+        margin: 18px 0 6px;
+    }
+    .modal#authModal .auth-social-divider::before,
+    .modal#authModal .auth-social-divider::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: rgba(255, 255, 255, 0.08);
+    }
+    .modal#authModal .auth-social-row {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+    .modal#authModal .auth-social-btn {
+        height: 50px;
+        background: #14141a;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        color: #fff;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    /* Закрытие модалки */
+    .modal#authModal .modal-close {
+        position: fixed;
+        top: calc(var(--vsa-top) + 12px);
+        right: 14px;
+        width: 36px; height: 36px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.08);
+        z-index: 5;
+    }
+}
+
+/* ============================================================
+   8. ПЛЕЕР-БАР (мини, всегда внизу)
+   ============================================================ */
+@media (max-width: 720px) {
+    .player {
+        margin: 0 8px 8px !important;
+        border-radius: 14px !important;
+        background: linear-gradient(180deg, #2a1418, #1a0d12) !important;
+        box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.4);
+        bottom: calc(var(--tabbar-h, 56px) + var(--vsa-bottom)) !important;
+        left: 0; right: 0;
+        position: fixed !important;
+    }
+}
+
+/* Tabbar нижний — учитываем safe-area */
+@media (max-width: 900px) {
+    .tabbar {
+        padding-bottom: var(--vsa-bottom) !important;
+        height: calc(var(--tabbar-h, 56px) + var(--vsa-bottom)) !important;
+    }
+}
