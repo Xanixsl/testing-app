@@ -4834,7 +4834,18 @@ def _register_routes(app: Flask) -> None:
 
     @app.route("/api/stream", methods=["GET", "HEAD"])
     def api_stream():
-        q = request.args.get("q", "").strip()
+        # Sprinthost WAF режет URL с кириллицей в `q=` → 403 ДО Flask.
+        # Поэтому фронт может прислать base64url-кодированный q как `qb=...`.
+        qb = (request.args.get("qb") or "").strip()
+        if qb:
+            try:
+                import base64 as _b64
+                pad = "=" * (-len(qb) % 4)
+                q = _b64.urlsafe_b64decode(qb + pad).decode("utf-8", "replace").strip()
+            except Exception:
+                q = ""
+        else:
+            q = request.args.get("q", "").strip()
         if not q:
             return Response("missing q", status=400)
         # Серверная блокировка для kids_mode (если клиент пометил трек как explicit)
