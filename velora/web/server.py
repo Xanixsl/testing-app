@@ -4849,18 +4849,19 @@ def _register_routes(app: Flask) -> None:
                          "Access-Control-Expose-Headers": "X-Velora-Source"}
                     return Response("", status=200, headers=h)
             else:
-                # Никаких ранних preview-shortcut'ов: пользователь хочет ПОЛНЫЕ
-                # треки без цензуры. Если резолвер падает — отдаём 503,
-                # клиент скипнет на следующий (см. audio 'error' handler).
-                # Preview принимается ТОЛЬКО если клиент явно попросил ?fallback=preview=1.
-                allow_preview_fb = request.args.get("fallback") == "preview"
+                # Если полный резолв провалился, но клиент прислал preview-URL —
+                # отдаём 30-сек превью same-origin, чтобы хоть что-то играло
+                # пока внешний worker не подтянет полный трек в кэш. 503 без
+                # preview оставляем только если превью нет (клиент скипнет).
+                # Принудительно отключить превью можно ?nopreview=1.
+                allow_preview = request.args.get("nopreview") != "1"
                 try:
                     upstream = resolve_stream(q, target_dur, quality=quality)
                 except Exception as e:
                     app.logger.warning("resolve_stream failed for %r: %s", q, e)
                     upstream = None
                 if not upstream:
-                    if allow_preview_fb and preview.startswith("http"):
+                    if allow_preview and preview.startswith("http"):
                         upstream = preview
                         upstream_kind = "preview"
                     else:
