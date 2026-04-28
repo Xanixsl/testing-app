@@ -4945,7 +4945,35 @@ def _register_routes(app: Flask) -> None:
                     up = None
         if up is None:
             app.logger.warning("stream proxy fail: %s", last_err)
+            # Если у нас вообще есть preview-URL — отдадим 302 на него, пусть клиент тянет с CDN сам.
+            if preview.startswith("http"):
+                return redirect(preview, code=302)
             return Response("upstream unavailable", status=502)
+        # Если CDN отдал 4xx (например, deezer cdn-preview подписан под IP клиента
+        # и наш сервер с другим IP получает 403) — для preview делаем 302 redirect,
+        # чтобы браузер сходил САМ под своим IP. Для full source — пробуем preview как фоллбек.
+        if up.status_code >= 400:
+            try: up.close()
+            except Exception: pass
+            app.logger.warning("upstream %s -> HTTP %s; fallback", upstream_kind, up.status_code)
+            if upstream_kind != "preview" and preview.startswith("http"):
+                # Попробуем preview-прокси
+                try:
+                    up = _S.get(preview, headers=fwd_headers, stream=True, timeout=15, allow_redirects=True)
+                    upstream_kind = "preview"
+                except Exception:
+                    up = None
+                if up is not None and up.status_code >= 400:
+                    try: up.close()
+                    except Exception: pass
+                    return redirect(preview, code=302)
+                if up is None:
+                    return redirect(preview, code=302)
+            else:
+                # Уже preview и всё равно 4xx → отправим 302 на CDN (подпись под user-IP).
+                if preview.startswith("http"):
+                    return redirect(preview, code=302)
+                return Response("upstream forbidden", status=502)
         resp_headers = {}
         for h in ("Content-Type", "Content-Length", "Content-Range",
                   "Accept-Ranges", "Cache-Control", "ETag", "Last-Modified"):
