@@ -107,6 +107,39 @@ _MIN_DURATION = 60
 _TTL = 6 * 3600
 _CACHE: dict[tuple, tuple[float, str]] = {}
 
+
+def _url_expired(url: str, skew: int = 30) -> bool:
+    """Проверяет реальный expiry в URL (Cloudfront Policy / googlevideo expire=).
+
+    SoundCloud signed-URL живут ~1 час и содержат base64 Policy с
+    DateLessThan.AWS:EpochTime. YouTube googlevideo URL содержит ?expire=<epoch>.
+    Если URL протух (минус skew секунд) — возвращаем True, чтобы вызывающий
+    re-resolve'ил вместо отдачи протухшей подписи (CDN ответит 403).
+    """
+    if not url:
+        return True
+    import base64 as _b64
+    import time as _tm
+    import re as _re
+    now = _tm.time()
+    try:
+        # YouTube: ?expire=1777406055
+        m = _re.search(r"[?&]expire=(\d+)", url)
+        if m:
+            return float(m.group(1)) - skew < now
+        # SoundCloud Cloudfront: Policy=<base64url-json>
+        m = _re.search(r"[?&]Policy=([^&]+)", url)
+        if m:
+            raw = m.group(1).replace("_", "/").replace("-", "+")
+            pad = "=" * (-len(raw) % 4)
+            data = _b64.b64decode(raw + pad).decode("utf-8", "replace")
+            m2 = _re.search(r'"AWS:EpochTime"\s*:\s*(\d+)', data)
+            if m2:
+                return float(m2.group(1)) - skew < now
+    except Exception:
+        return False
+    return False
+
 # Persistent disk cache (переживает перезапуск workers)
 import json as _json
 import os as _os_mod
@@ -134,7 +167,7 @@ def _cache_load() -> None:
                     continue
                 key = (parts[0], int(parts[1]), parts[2])
                 ts, url = v[0], v[1]
-                if now - ts < _TTL:
+                if now - ts < _TTL and not _url_expired(str(url)):
                     _CACHE[key] = (float(ts), str(url))
                     loaded += 1
             except Exception:
@@ -168,7 +201,7 @@ def _cache_refresh_if_changed() -> None:
                     continue
                 key = (parts[0], int(parts[1]), parts[2])
                 ts, url = float(v[0]), str(v[1])
-                if now - ts >= _TTL:
+                if now - ts >= _TTL or _url_expired(url):
                     continue
                 cur = _CACHE.get(key)
                 if not cur or cur[0] < ts:
@@ -712,15 +745,20 @@ def resolve_stream(query: str, target_duration: int = 0, quality: str = "hi") ->
     key = (base, int(target_duration or 0), quality)
     now = time.time()
     cached = _CACHE.get(key)
-    if cached and now - cached[0] < _TTL:
+    if cached and now - cached[0] < _TTL and not _url_expired(cached[1]):
         return cached[1]
     # Возможно внешний worker запушил URL после старта этого процесса —
     # подгрузим свежие записи с диска и попробуем ещё раз.
     _cache_refresh_if_changed()
     cached = _CACHE.get(key)
-    if cached and now - cached[0] < _TTL:
+    if cached and now - cached[0] < _TTL and not _url_expired(cached[1]):
         _flog(f"PICK CACHE-DISK q={base!r} url=YES")
         return cached[1]
+    # Если запись была, но URL протух — выкидываем и идём в queue/live.
+    if cached and _url_expired(cached[1]):
+        _flog(f"CACHE EXPIRED q={base!r} → drop+requeue")
+        try: del _CACHE[key]
+        except KeyError: pass
 
     # ------------------------------------------------------------------
     # «БЫСТРЫЙ ПРОМАХ» (RESOLVER_LIVE_DISABLED=1):
