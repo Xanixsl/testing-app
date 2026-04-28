@@ -435,7 +435,11 @@ async function downloadTrack(t, onProgress) {
     // потока. Без перекодирования (без ffmpeg) — просто выбор более лёгкого
     // формата из тех, что предлагает источник. Экономия ~30–60% места,
     // потери на слух не различимы.
-    const url = `/api/stream?source=${encodeURIComponent(t.source||"")}&source_id=${encodeURIComponent(t.source_id||"")}&q=${encodeURIComponent((t.artist||"")+" "+(t.title||""))}&duration=${t.duration||0}&quality=low${t.explicit?"&explicit=1":""}${t.preview_url?`&preview=${encodeURIComponent(t.preview_url)}`:""}`;
+    const _q3 = (t.artist||"")+" "+(t.title||"");
+    const _isCyr3 = /[^\x00-\x7F]/.test(_q3);
+    const url = (_isCyr3 && t.preview_url)
+        ? t.preview_url
+        : `/api/stream?source=${encodeURIComponent(t.source||"")}&source_id=${encodeURIComponent(t.source_id||"")}&q=${encodeURIComponent(_q3)}&duration=${t.duration||0}&quality=low${t.explicit?"&explicit=1":""}${t.preview_url?`&preview=${encodeURIComponent(t.preview_url)}`:""}`;
     const resp = await fetch(url);
     if (!resp.ok) throw new Error("HTTP "+resp.status);
     // ⚠️ HLS-плейлисты (m3u8) играть офлайн нельзя — внутри только ссылки на сегменты CDN.
@@ -4899,7 +4903,28 @@ async function playCurrent() {
     renderNowPlaying(); refreshTrackRows();
     if (state.trailerTimer) { clearTimeout(state.trailerTimer); state.trailerTimer = null; }
     try {
-        const url = `/api/stream?source=${encodeURIComponent(t.source||"")}&source_id=${encodeURIComponent(t.source_id||"")}&q=${encodeURIComponent((t.artist||"")+" "+(t.title||""))}&duration=${t.duration||0}${t.explicit?"&explicit=1":""}${t.preview_url?`&preview=${encodeURIComponent(t.preview_url)}`:""}`;
+        const _qStr = (t.artist||"")+" "+(t.title||"");
+        // Sprinthost WAF режет URL с кириллицей в query → 403. Если есть
+        // preview_url — играем его напрямую с Deezer CDN, минуя /api/stream.
+        // Для ASCII-запросов оставляем старую схему — воркер может
+        // подтянуть полную версию в кэш, и /api/stream отдаст её вместо превью.
+        const _isCyr = /[^\x00-\x7F]/.test(_qStr);
+        let url;
+        if (_isCyr && t.preview_url) {
+            url = t.preview_url;
+            // Поставим трек в очередь GH Actions воркеру — при следующем
+            // воспроизведении сервер сможет отдать уже полную версию.
+            try {
+                fetch("/api/resolve/enqueue", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({q: _qStr, duration: t.duration||0, quality: "hi"}),
+                    keepalive: true,
+                }).catch(()=>{});
+            } catch {}
+        } else {
+            url = `/api/stream?source=${encodeURIComponent(t.source||"")}&source_id=${encodeURIComponent(t.source_id||"")}&q=${encodeURIComponent(_qStr)}&duration=${t.duration||0}${t.explicit?"&explicit=1":""}${t.preview_url?`&preview=${encodeURIComponent(t.preview_url)}`:""}`;
+        }
         state.streamUrl = url;
         vlog("  stream URL:", url);
         if (myGen !== state._playGen) { vlog("  cancelled (gen mismatch before blob)"); return; }     // пользователь уже выбрал другой
@@ -5115,7 +5140,11 @@ async function prefetchNext() {
         _prefetchedKey = k;
         // Если уже скачан в офлайн — ничего не делаем, играем напрямую из IDB.
         if (await offlineHas(next)) return;
-        const url = `/api/stream?source=${encodeURIComponent(next.source||"")}&source_id=${encodeURIComponent(next.source_id||"")}&q=${encodeURIComponent((next.artist||"")+" "+(next.title||""))}&duration=${next.duration||0}${next.explicit?"&explicit=1":""}${next.preview_url?`&preview=${encodeURIComponent(next.preview_url)}`:""}`;
+        const _nq = (next.artist||"")+" "+(next.title||"");
+        const _isCyr2 = /[^\x00-\x7F]/.test(_nq);
+        const url = (_isCyr2 && next.preview_url)
+            ? next.preview_url
+            : `/api/stream?source=${encodeURIComponent(next.source||"")}&source_id=${encodeURIComponent(next.source_id||"")}&q=${encodeURIComponent(_nq)}&duration=${next.duration||0}${next.explicit?"&explicit=1":""}${next.preview_url?`&preview=${encodeURIComponent(next.preview_url)}`:""}`;
         // Прогреваем браузерный кэш HEAD-запросом — сервер вернёт Content-Length и Last-Modified.
         // Низкий приоритет, чтобы не мешать текущему стриму.
         try { fetch(url, { method: "HEAD", priority: "low" }).catch(()=>{}); } catch {}

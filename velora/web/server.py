@@ -4764,6 +4764,29 @@ def _register_routes(app: Flask) -> None:
         # Защита от timing-атаки.
         return secrets.compare_digest(got, expected)
 
+    @app.route("/api/resolve/enqueue", methods=["POST"])
+    def api_resolve_enqueue():
+        # Публичный fire-and-forget enqueue: фронт зовёт когда не может
+        # дотянуться до /api/stream (cyrillic в q режется WAF). Ставит трек
+        # в очередь воркеру, чтобы при следующем включении уже была полная
+        # версия из кэша. Без авторизации — но содержимое крайне ограничено.
+        try:
+            from velora.api.resolver import queue_add
+            data = request.get_json(silent=True) or {}
+            q = (data.get("q") or "").strip()[:200]
+            if not q:
+                return jsonify({"ok": False}), 400
+            try:
+                dur = int(data.get("duration") or 0)
+            except (TypeError, ValueError):
+                dur = 0
+            quality = (data.get("quality") or "hi").strip().lower()
+            queue_add(q, dur, quality)
+            return jsonify({"ok": True})
+        except Exception as e:
+            app.logger.exception("enqueue err: %s", e)
+            return jsonify({"ok": False, "error": str(e)}), 500
+
     @app.route("/api/resolve/queue", methods=["GET"])
     def api_resolve_queue():
         if not _resolver_token_ok():
